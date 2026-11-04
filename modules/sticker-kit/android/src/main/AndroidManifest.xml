@@ -1,0 +1,30 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <application>
+    <!-- Downloads the ML Kit subject segmentation model when the app is installed. -->
+    <meta-data
+      android:name="com.google.mlkit.vision.DEPENDENCIES"
+      android:value="subject_segment" />
+    <provider
+      android:name="expo.modules.stickerkit.WhatsAppStickerProvider"
+      android:authorities="${applicationId}.stickerkit"
+      android:enabled="true"
+      android:exported="true"
+      android:readPermission="com.whatsapp.sticker.READ" />
+    <provider
+      android:name="expo.modules.stickerkit.TelegramFileProvider"
+      android:authorities="${applicationId}.stickerkit.files"
+      android:exported="false"
+      android:grantUriPermissions="true">
+      <meta-data
+        android:name="android.support.FILE_PROVIDER_PATHS"
+        android:resource="@xml/stickerkit_file_paths" />
+    </provider>
+  </application>
+
+  <queries>
+    <package android:name="com.whatsapp" />
+    <package android:name="com.whatsapp.w4b" />
+    <package android:name="org.telegram.messenger" />
+    <package android:name="org.telegram.messenger.web" />
+  </queries>
+</manifest>

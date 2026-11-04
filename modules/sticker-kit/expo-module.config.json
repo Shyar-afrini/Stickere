@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["StickerKitModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.stickerkit.StickerKitModule"]
+  }
+}

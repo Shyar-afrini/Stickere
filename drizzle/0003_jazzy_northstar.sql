@@ -1,0 +1,1 @@
+ALTER TABLE `stickers` RENAME COLUMN "uri" TO "path";
