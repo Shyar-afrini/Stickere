@@ -5,16 +5,17 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-na
 import Svg, { Circle, Defs, Mask, Rect } from "react-native-svg";
 
 import { Image, Text } from "@/components/ui";
+import { Colors } from "@/constants/theme";
 import type { Sticker } from "@/db/schema";
 import { getStickerUri } from "@/lib/sticker-storage";
 
-// Pastel paper, a saturated panel for the artwork and a dark ink for the caption.
+// Pastel paper, an iOS system color panel for the artwork and a dark ink for the caption.
 const PALETTES = [
-  { paper: "#E8F0FE", panel: "#2F5BEA", ink: "#1D3FB8" },
-  { paper: "#FDEBE8", panel: "#E5533D", ink: "#7A1F12" },
-  { paper: "#FFF4DD", panel: "#F2B33D", ink: "#7A5410" },
-  { paper: "#E6F6EC", panel: "#35A86A", ink: "#14502F" },
-  { paper: "#F1E9FB", panel: "#8A5BD6", ink: "#43237E" },
+  { paper: "#E8F0FE", panel: Colors.light.systemBlue, ink: "#1D3FB8" },
+  { paper: "#FDEBE8", panel: Colors.light.systemRed, ink: "#7A1F12" },
+  { paper: "#FFF4DD", panel: Colors.light.systemOrange, ink: "#7A5410" },
+  { paper: "#E6F6EC", panel: Colors.light.systemGreen, ink: "#14502F" },
+  { paper: "#F1E9FB", panel: Colors.light.systemPurple, ink: "#43237E" },
 ];
 
 const MARGIN = 22;

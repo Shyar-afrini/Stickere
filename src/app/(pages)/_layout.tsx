@@ -66,7 +66,7 @@ type AddAction = { label: string; icon: LucideIcon; onPress: () => void };
 
 const SPRING = { damping: 16, stiffness: 180, mass: 0.8 };
 /** Height of the expanded panel the pill morphs into. */
-const MENU_HEIGHT = 230;
+const MENU_HEIGHT = 272;
 
 /**
  * Detached pill floating over the content, next to a round add button. The
@@ -174,6 +174,10 @@ function TabBar({ children, style, ...props }: ViewProps) {
     ],
   }));
 
+  const dividerStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0.3, 0.8], [0, 1], Extrapolation.CLAMP),
+  }));
+
   // Turns upside down while the menu is open.
   const chevronStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${progress.value * 180}deg` }],
@@ -247,6 +251,22 @@ function TabBar({ children, style, ...props }: ViewProps) {
                 </Pressable>
               ))}
             </Animated.View>
+            {/* Hairline between the open menu's items and the bar holding the menu button. */}
+            <Animated.View
+              pointerEvents="none"
+              style={[styles.menuDivider, { backgroundColor: theme.separator }, dividerStyle]}
+            />
+            {/* Shown in the bar's bottom row while the menu is open, where the tabs have faded out. */}
+            <Animated.View pointerEvents="none" style={[styles.appName, dividerStyle]}>
+              <Text variant="title3" style={{ fontFamily: "Calvino", fontWeight: "normal" }}>
+                Stickerê
+              </Text>
+            </Animated.View>
+            {/* Hairline between the tabs and the menu button. */}
+            <View
+              pointerEvents="none"
+              style={[styles.divider, { right: BAR_PADDING + buttonWidth, backgroundColor: theme.separator }]}
+            />
             {/* Fourth slot of the bar. It is not a tab: it opens and closes the menu, and stays put while
                 the tabs fade out. */}
             <Pressable
@@ -333,9 +353,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     alignContent: "flex-start",
-    paddingHorizontal: BAR_PADDING,
-    paddingTop: 10,
-    rowGap: 6,
+    paddingHorizontal: 16,
+    paddingTop: 18,
+    rowGap: 14,
   },
   // One tile per tab column, so the grid lines up with the tabs below.
   tile: { width: "33%", alignItems: "center", gap: 4 },
@@ -353,6 +373,26 @@ const styles = StyleSheet.create({
     borderRadius: TAB_BAR_HEIGHT / 2,
     overflow: "hidden",
     borderWidth: StyleSheet.hairlineWidth,
+  },
+  appName: {
+    position: "absolute",
+    left: 20,
+    bottom: 0,
+    height: TAB_BAR_HEIGHT,
+    justifyContent: "center",
+  },
+  menuDivider: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    bottom: TAB_BAR_HEIGHT,
+    height: StyleSheet.hairlineWidth,
+  },
+  divider: {
+    position: "absolute",
+    bottom: (TAB_BAR_HEIGHT - 28) / 2,
+    width: StyleSheet.hairlineWidth,
+    height: 28,
   },
   menuButton: {
     position: "absolute",

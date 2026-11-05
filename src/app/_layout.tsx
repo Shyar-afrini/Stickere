@@ -1,4 +1,5 @@
 import { useMigrations } from "drizzle-orm/expo-sqlite/migrator";
+import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
 
@@ -10,7 +11,7 @@ import "@/lib/geofence";
 import { db } from "@/db";
 import migrations from "../../drizzle/migrations";
 
-const MIN_LOADING_MS = 5000;
+const MIN_LOADING_MS = 4000;
 
 /** Covers the whole app, native modals included, until the PIN or Face ID is given. */
 function AppLockGate() {
@@ -20,6 +21,10 @@ function AppLockGate() {
 
 export default function RootLayout() {
   const { success, error } = useMigrations(db, migrations);
+  // The app name is set in Calvino. A failed load falls back to the system font.
+  const [fontsLoaded, fontError] = useFonts({
+    Calvino: require("../../assets/fonts/Calvino-Bold-trial.ttf"),
+  });
   // Keep the animation up long enough to play through once, even when the database is quick.
   const [shownLongEnough, setShownLongEnough] = useState(false);
 
@@ -36,7 +41,7 @@ export default function RootLayout() {
     );
   }
 
-  if (!success || !shownLongEnough) {
+  if (!success || !shownLongEnough || !(fontsLoaded || fontError)) {
     return <LoadingScreen />;
   }
 

@@ -26,7 +26,7 @@ import Animated, { useAnimatedStyle, useDerivedValue, useSharedValue, type Share
 import Svg, { Defs, Pattern, Rect } from "react-native-svg";
 
 import { Spinner, Text } from "@/components/ui";
-import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useTheme } from "@/hooks/use-theme";
 import type { EditorState, Layer, StickerEditorStore, Stroke } from "@/lib/sticker-editor-store";
 
 const TEXT_SIZE = 48;
@@ -238,8 +238,8 @@ type Props = {
 export function StickerCanvas({ store, side, canvasRef }: Props) {
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const { image, failed } = useLocalImage(state.baseUri);
-  const dark = useColorScheme() === "dark";
-  const [checkLight, checkDark] = dark ? ["#1C1C1E", "#2C2C2E"] : ["#F2F2F2", "#DADADA"];
+  const theme = useTheme();
+  const [checkLight, checkDark] = [theme.systemGray6, theme.systemGray5];
 
   const livePath = useSharedValue<SkPath>(emptyPath);
   const touchX = useSharedValue(0);
@@ -473,7 +473,7 @@ export function StickerCanvas({ store, side, canvasRef }: Props) {
                   r={(state.brush * LOUPE_ZOOM) / 2}
                   style="stroke"
                   strokeWidth={1.5}
-                  color="#007AFF"
+                  color={theme.systemBlue}
                 />
               </Group>
               <Circle cx={loupeCx} cy={loupeCy} r={LOUPE_RADIUS} style="stroke" strokeWidth={3} color="#FFFFFF" />
@@ -488,6 +488,7 @@ export function StickerCanvas({ store, side, canvasRef }: Props) {
 }
 
 function SelectionRing({ layer, drag }: { layer: Layer; drag: Drag }) {
+  const theme = useTheme();
   const follow = useAnimatedStyle(() => {
     const moving = drag.id.value === layer.id;
     return {
@@ -511,7 +512,7 @@ function SelectionRing({ layer, drag }: { layer: Layer; drag: Drag }) {
           height: layer.radius * 2 * layer.scale,
           borderWidth: 1.5,
           borderStyle: "dashed",
-          borderColor: "#007AFF",
+          borderColor: theme.systemBlue,
           borderRadius: 6,
         },
         follow,

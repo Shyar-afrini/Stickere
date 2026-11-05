@@ -40,16 +40,29 @@ import {
   Toggle,
   showAlert,
 } from "@/components/ui";
+import { Colors } from "@/constants/theme";
 import { db } from "@/db";
 import { inOpenPack } from "@/db/filters";
 import { stickers } from "@/db/schema";
 import { StickerEditorStore, type Frame, type Tool } from "@/lib/sticker-editor-store";
 import { useHeaderInset } from "@/hooks/use-header-inset";
+import { useTheme } from "@/hooks/use-theme";
 import { getDraft, saveDraft } from "@/lib/drafts";
 import { getStickerUri } from "@/lib/sticker-storage";
 import { makeSticker } from "../../../../modules/sticker-kit";
 
-const COLORS = ["#FFFFFF", "#000000", "#FF3B30", "#FF9500", "#FFCC00", "#34C759", "#007AFF", "#AF52DE", "#FF6EC7"];
+// Text colors for stickers are fixed, so they take the light iOS system colors in either theme.
+const COLORS = [
+  "#FFFFFF",
+  "#000000",
+  Colors.light.systemRed,
+  Colors.light.systemOrange,
+  Colors.light.systemYellow,
+  Colors.light.systemGreen,
+  Colors.light.systemBlue,
+  Colors.light.systemPurple,
+  Colors.light.systemPink,
+];
 const BRUSHES = [8, 18, 34];
 const EMOJIS = ["😀", "😂", "😍", "😎", "🥳", "😭", "🔥", "💖", "👍", "🎉", "✨", "⭐", "🌈", "🍕", "☕", "🐶", "🐱", "🌸", "🚀", "👑"];
 const FRAMES: { key: Frame; label: string }[] = [
@@ -70,6 +83,7 @@ const TOOLS: { key: Tool; label: string; icon: LucideIcon }[] = [
 const textRadius = (value: string) => Math.min(150, Math.max(30, (value.length * 48 * 0.6) / 2));
 
 function ColorRow({ value, onChange }: { value: string; onChange: (color: string) => void }) {
+  const theme = useTheme();
   return (
     <HScroll gap="sm">
       {COLORS.map((color) => (
@@ -81,7 +95,7 @@ function ColorRow({ value, onChange }: { value: string; onChange: (color: string
               borderRadius: 15,
               backgroundColor: color,
               borderWidth: value === color ? 3 : 1,
-              borderColor: value === color ? "#007AFF" : "rgba(128,128,128,0.5)",
+              borderColor: value === color ? theme.systemBlue : theme.systemGray3,
             }}
           />
         </Pressable>
@@ -91,6 +105,7 @@ function ColorRow({ value, onChange }: { value: string; onChange: (color: string
 }
 
 function BrushRow({ value, onChange }: { value: number; onChange: (size: number) => void }) {
+  const theme = useTheme();
   return (
     <HStack gap="lg" justify="center">
       {BRUSHES.map((size) => (
@@ -105,10 +120,10 @@ function BrushRow({ value, onChange }: { value: number; onChange: (size: number)
             alignItems: "center",
             justifyContent: "center",
             borderWidth: value === size ? 2 : 0,
-            borderColor: "#007AFF",
+            borderColor: theme.systemBlue,
           }}
         >
-          <View style={{ width: size / 1.5 + 4, height: size / 1.5 + 4, borderRadius: size, backgroundColor: "#8E8E93" }} />
+          <View style={{ width: size / 1.5 + 4, height: size / 1.5 + 4, borderRadius: size, backgroundColor: theme.systemGray }} />
         </Pressable>
       ))}
     </HStack>
@@ -119,6 +134,7 @@ function BrushRow({ value, onChange }: { value: number; onChange: (size: number)
 export default function EditImage() {
   const router = useRouter();
   const headerInset = useHeaderInset();
+  const theme = useTheme();
   const { height: windowHeight } = useWindowDimensions();
   const routeParams = useLocalSearchParams<Record<string, string>>();
   // Opened from the drafts list: carry on from the saved picture and its original params.
@@ -542,7 +558,7 @@ export default function EditImage() {
                   py="md"
                   radius="md"
                   bg="secondarySystemGroupedBackground"
-                  style={{ borderWidth: 1.5, borderColor: active ? "#007AFF" : "transparent" }}
+                  style={{ borderWidth: 1.5, borderColor: active ? theme.systemBlue : "transparent" }}
                 >
                   <Icon icon={icon} size={22} color={active ? "systemBlue" : "label"} />
                   <Text variant="footnote" color={active ? "systemBlue" : "label"}>
