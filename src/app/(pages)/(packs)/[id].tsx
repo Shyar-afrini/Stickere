@@ -1,17 +1,20 @@
+import { Share, Smile, Trash2 } from "lucide-react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 
+import { LockScreen } from "@/components/lock-screen";
 import { StickerMasonry } from "@/components/sticker-masonry";
 import {
   EmptyState,
-  Fab,
   HeaderButton,
   Screen,
   confirmDelete,
   showAlert,
 } from "@/components/ui";
-import { deletePack, deleteSticker } from "@/db/mutations";
+import { deletePack, reorderStickers } from "@/db/mutations";
+import { useReorder } from "@/hooks/use-reorder";
 import { usePack } from "@/hooks/use-packs";
-import { pickImage } from "@/lib/pick-image";
+import { unlockPack, useLockState } from "@/lib/lock-state";
+import { startNewSticker } from "@/lib/add-sticker";
 import { ShareError, sharePack, type StickerApp } from "@/lib/sticker-share";
 
 export default function PackDetail() {
@@ -19,9 +22,19 @@ export default function PackDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const packId = Number(id);
   const { pack, stickers, isLoading } = usePack(packId);
+  const { unlockedPacks } = useLockState();
+  const reorder = useReorder(
+    stickers,
+    (sticker) => String(sticker.id),
+    (next) => reorderStickers(packId, next.map((sticker) => sticker.id)),
+  );
 
   if (isLoading) {
     return null;
+  }
+
+  if (pack?.isLocked && !unlockedPacks.has(packId)) {
+    return <LockScreen title={pack.name} onUnlock={() => unlockPack(packId)} />;
   }
 
   const share = async (app: StickerApp) => {
@@ -48,39 +61,24 @@ export default function PackDetail() {
       { text: "Cancel", style: "cancel" },
     ]);
 
-  // Opens the photo picker first; the editor only appears once a photo is chosen.
-  const addSticker = async () => {
-    const picked = await pickImage();
-    if (!picked) return;
-
-    router.push({
-      pathname: "/(pages)/(packs)/new-sticker",
-      params: {
-        packId,
-        uri: picked.uri,
-        width: picked.width,
-        height: picked.height,
-        mimeType: picked.mimeType,
-        name: picked.name ?? "Sticker",
-      },
-    });
-  };
-
   return (
     <Screen>
       <Stack.Screen
         options={{
           title: pack?.name ?? "",
-          headerRight: () => (
+          headerRight: () =>
+            reorder.editing ? (
+              <HeaderButton label="Done" bold onPress={reorder.stopEditing} />
+            ) : (
             <>
               <HeaderButton
-                symbol="square.and.arrow.up"
+                icon={Share}
                 accessibilityLabel="Share pack"
                 disabled={stickers.length === 0}
                 onPress={chooseShareTarget}
               />
               <HeaderButton
-                symbol="trash"
+                icon={Trash2}
                 destructive
                 accessibilityLabel="Delete pack"
                 onPress={() =>
@@ -101,29 +99,23 @@ export default function PackDetail() {
       />
       {stickers.length === 0 ? (
         <EmptyState
-          symbol="face.smiling"
+          icon={Smile}
           title="No Stickers"
           description="Add your first sticker to this pack."
-          action={{ label: "Add Sticker", onPress: addSticker }}
+          action={{ label: "Add Sticker", onPress: () => startNewSticker(router, packId) }}
         />
       ) : (
         <StickerMasonry
-          stickers={stickers}
-          onStickerLongPress={(sticker) =>
-            confirmDelete({
-              title: `Delete “${sticker.name}”?`,
-              message: "This sticker will be permanently deleted.",
-              onConfirm: () => deleteSticker(sticker),
+          reorder={reorder}
+          onStickerPress={(sticker) =>
+            router.push({
+              pathname: "/(pages)/(packs)/sticker",
+              params: { stickerId: sticker.id },
             })
           }
         />
       )}
 
-      <Fab
-        actions={[
-          { label: "Add Sticker", symbol: "face.smiling", onPress: addSticker },
-        ]}
-      />
     </Screen>
   );
 }

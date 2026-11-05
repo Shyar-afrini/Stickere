@@ -1,11 +1,18 @@
+import { Images, Lock } from "lucide-react-native";
 import { Link } from "expo-router";
 
-import { Icon, Image, Pressable, Text, Tile, confirmDelete } from "@/components/ui";
-import { deletePack } from "@/db/mutations";
+import { Icon, Image, Pressable, Text, Tile } from "@/components/ui";
 import type { PackSummary } from "@/hooks/use-packs";
 import { getStickerUri } from "@/lib/sticker-storage";
 
-export function PackCard({ pack }: { pack: PackSummary }) {
+type Props = {
+  pack: PackSummary;
+  /** Long press picks the card up for reordering. */
+  onLongPress?: () => void;
+  onPressOut?: () => void;
+};
+
+export function PackCard({ pack, onLongPress, onPressOut }: Props) {
   const count = pack.stickerCount === 1 ? "1 sticker" : `${pack.stickerCount} stickers`;
 
   return (
@@ -18,22 +25,19 @@ export function PackCard({ pack }: { pack: PackSummary }) {
         accessibilityRole="button"
         accessibilityLabel={`${pack.name}, ${count}`}
         style={{ flex: 1 }}
-        onLongPress={() =>
-          confirmDelete({
-            title: `Delete “${pack.name}”?`,
-            message: "The pack and all of its stickers will be deleted.",
-            onConfirm: () => deletePack(pack.id),
-          })
-        }
+        onLongPress={onLongPress}
+        onPressOut={onPressOut}
       >
         <Tile>
-          {pack.coverPath ? (
+          {pack.isLocked ? (
+            <Icon icon={Lock} size={32} color="systemGray2" />
+          ) : pack.coverPath ? (
             <Image
               source={{ uri: getStickerUri(pack.coverPath) }}
               style={{ width: "100%", height: "100%" }}
             />
           ) : (
-            <Icon name="photo.on.rectangle.angled" size={32} color="tertiaryLabel" />
+            <Icon icon={Images} size={32} color="systemGray2" />
           )}
         </Tile>
 

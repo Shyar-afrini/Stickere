@@ -1,4 +1,5 @@
-import { FlatList, View } from "react-native";
+import { useState } from "react";
+import { ScrollView, View } from "react-native";
 
 import { Spacing, type SpaceKey } from "@/constants/theme";
 
@@ -10,11 +11,22 @@ type Props<T> = {
   gap?: SpaceKey;
   rowGap?: SpaceKey;
   inset?: SpaceKey;
+  /** Space above the first row; defaults to `inset`. */
+  topInset?: SpaceKey;
   /** Extra space below the last row, for floating controls. */
   bottomInset?: number;
+  /** Content above the first row, e.g. a section of suggestions. */
+  header?: React.ReactElement | null;
+  /** Extra space above everything, for a transparent header floating over the grid. */
+  headerInset?: number;
+  /** Turned off while a card is being dragged. */
+  scrollEnabled?: boolean;
 };
 
-/** Multi-column grid that scrolls under the large title like a native iOS list. */
+/**
+ * Multi-column grid. Cells are plain siblings in one container (not a virtualized
+ * list), so a card that is being dragged can be drawn above all the others.
+ */
 export function Grid<T>({
   data,
   keyExtractor,
@@ -23,27 +35,43 @@ export function Grid<T>({
   gap = "lg",
   rowGap = "xl",
   inset = "lg",
+  topInset = inset,
   bottomInset = 0,
+  header,
+  headerInset = 0,
+  scrollEnabled = true,
 }: Props<T>) {
-  // Pads the last row with blanks so a lone item keeps its column width.
-  const blanks = (columns - (data.length % columns)) % columns;
-  const items: (T | null)[] = [...data, ...Array<null>(blanks).fill(null)];
+  const [width, setWidth] = useState(0);
+  const cellWidth = (width - 2 * Spacing[inset] - (columns - 1) * Spacing[gap]) / columns;
 
   return (
-    <FlatList
-      data={items}
-      keyExtractor={(item, index) => (item === null ? `blank-${index}` : keyExtractor(item))}
-      numColumns={columns}
-      renderItem={({ item }) => (
-        <View style={{ flex: 1 }}>{item === null ? null : renderItem(item)}</View>
-      )}
+    <ScrollView
       contentInsetAdjustmentBehavior="automatic"
+      scrollEnabled={scrollEnabled}
+      onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
       contentContainerStyle={{
         padding: Spacing[inset],
+        paddingTop: Spacing[topInset] + headerInset,
         paddingBottom: Spacing[inset] + bottomInset,
-        gap: Spacing[rowGap],
       }}
-      columnWrapperStyle={{ gap: Spacing[gap] }}
-    />
+    >
+      {header}
+      {width > 0 && (
+        <View
+          style={{
+            flexDirection: "row",
+            flexWrap: "wrap",
+            columnGap: Spacing[gap],
+            rowGap: Spacing[rowGap],
+          }}
+        >
+          {data.map((item) => (
+            <View key={keyExtractor(item)} style={{ width: cellWidth }}>
+              {renderItem(item)}
+            </View>
+          ))}
+        </View>
+      )}
+    </ScrollView>
   );
 }

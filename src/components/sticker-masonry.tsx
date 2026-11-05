@@ -1,41 +1,66 @@
 import { useMemo } from "react";
 
-import { Box, Image, Pressable, ScrollView } from "@/components/ui";
+import { useHeaderInset } from "@/hooks/use-header-inset";
+import { useTabBarInset } from "@/hooks/use-tab-bar-inset";
+import { Box, Image, Pressable, ReorderCell, ScrollView } from "@/components/ui";
+import type { useReorder } from "@/hooks/use-reorder";
 import type { Sticker } from "@/db/schema";
 import { getStickerUri } from "@/lib/sticker-storage";
 
 type Props = {
-  stickers: Sticker[];
-  onStickerLongPress?: (sticker: Sticker) => void;
+  /** Reorder state, owned by the page so its header can show a Done button. */
+  reorder: ReturnType<typeof useReorder<Sticker>>;
+  onStickerPress?: (sticker: Sticker) => void;
 };
 
 /**
  * Shows stickers in their own free-form shape: no frame, no cropping. Each
  * sticker keeps its aspect ratio and the two columns are balanced by height.
+ * Long press a sticker to pick it up and drag it to a new place.
  */
-export function StickerMasonry({ stickers, onStickerLongPress }: Props) {
-  const columns = useMemo(() => splitColumns(stickers), [stickers]);
+export function StickerMasonry({ reorder, onStickerPress }: Props) {
+  const tabInset = useTabBarInset();
+  const headerInset = useHeaderInset();
+  const { controller, order, activeKey, dragging, editing, startEditing } = reorder;
+  const columns = useMemo(() => splitColumns(order), [order]);
 
   return (
-    <ScrollView>
+    <ScrollView scrollEnabled={!dragging} contentContainerStyle={{ paddingTop: headerInset, paddingBottom: tabInset + 80 }}>
       <Box row align="flex-start" gap="lg" p="lg">
         {columns.map((column, index) => (
-          <Box key={index} flex={1} gap="lg">
+          <Box
+            key={index}
+            flex={1}
+            gap="lg"
+            // The column holding the dragged card is drawn above the other one.
+            style={{ zIndex: column.some((sticker) => String(sticker.id) === activeKey) ? 1 : 0 }}
+          >
             {column.map((sticker) => (
-              <Pressable
+              <ReorderCell
                 key={sticker.id}
-                accessibilityLabel={sticker.name}
-                onLongPress={() => onStickerLongPress?.(sticker)}
+                controller={controller}
+                id={String(sticker.id)}
+                active={activeKey === String(sticker.id)}
+                editing={editing}
+                onEnterEditing={startEditing}
               >
-                {/* No background on the wrapper: iOS then casts the shadow from
-                    the sticker's alpha, so it follows the cut-out outline. */}
-                <Box shadow="sticker">
-                  <Image
-                    source={{ uri: getStickerUri(sticker.path) }}
-                    style={{ aspectRatio: sticker.width / sticker.height }}
-                  />
-                </Box>
-              </Pressable>
+                {(handlers) => (
+                  <Pressable
+                    accessibilityLabel={sticker.name}
+                    onPress={() => onStickerPress?.(sticker)}
+                    {...handlers}
+                  >
+                    {/* No background on the wrapper: iOS then casts the shadow from
+                        the sticker's alpha, so it follows the cut-out outline. */}
+                    <Box shadow="sticker">
+                      <Image
+                        source={{ uri: getStickerUri(sticker.path) }}
+                        style={{ aspectRatio: sticker.width / sticker.height }}
+                      />
+                    </Box>
+                  </Pressable>
+                )}
+              </ReorderCell>
             ))}
           </Box>
         ))}

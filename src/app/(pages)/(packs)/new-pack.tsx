@@ -10,9 +10,11 @@ import {
   showAlert,
 } from "@/components/ui";
 import { createPack } from "@/db/mutations";
+import { useHeaderInset } from "@/hooks/use-header-inset";
 
 export default function NewPack() {
   const router = useRouter();
+  const headerInset = useHeaderInset();
   const [name, setName] = useState("");
   const [author, setAuthor] = useState("");
   const [description, setDescription] = useState("");
@@ -42,7 +44,7 @@ export default function NewPack() {
           ),
         }}
       />
-      <ScrollView gap="xl" py="lg">
+      <ScrollView gap="xl" py="lg" contentContainerStyle={{ paddingTop: headerInset + 16 }}>
         <ListSection>
           <TextField
             autoFocus

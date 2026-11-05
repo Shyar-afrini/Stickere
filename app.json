@@ -49,6 +49,12 @@
       "expo-sqlite",
       "expo-secure-store",
       [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Stickerê uses Face ID to unlock the app and your locked packs."
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "photosPermission": "Stickerê needs access to your photos so you can turn them into stickers.",
@@ -59,9 +65,22 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Stickerê uses your location to tag stickers with the place they belong to."
+          "locationWhenInUsePermission": "Stickerê uses your location to tag stickers with the place they belong to.",
+          "locationAlwaysAndWhenInUsePermission": "Stickerê uses your location in the background to remind you of stickers when you arrive at places you saved them.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
         }
-      ]
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Stickerê reads your recent photos to suggest stickers from your trips.",
+          "isAccessMediaLocationEnabled": true,
+          "savePhotosPermission": false
+        }
+      ],
+      "expo-notifications",
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true,

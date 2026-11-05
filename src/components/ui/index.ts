@@ -15,3 +15,8 @@ export { TextField } from "./text-field";
 export { Tile } from "./tile";
 export { Toggle } from "./toggle";
 export { Spinner } from "./spinner";
+export { HScroll } from "./h-scroll";
+export { TabStrip } from "./tab-strip";
+export { ReorderCell } from "./reorder-cell";
+export { Chip } from "./chip";
+export { Slider } from "./slider";

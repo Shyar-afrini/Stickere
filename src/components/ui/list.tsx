@@ -1,3 +1,4 @@
+import { Check } from "lucide-react-native";
 import { Children, type ReactNode } from "react";
 
 import { MinTapSize } from "@/constants/theme";
@@ -103,7 +104,7 @@ export function ListRow({
         ) : null}
       </Box>
       {accessory === "checkmark" && (
-        <Icon name="checkmark" size={16} color="systemBlue" weight="semibold" />
+        <Icon icon={Check} size={16} color="systemBlue" strokeWidth={2.5} />
       )}
       {trailing}
     </Box>

@@ -1,4 +1,4 @@
-import type { SFSymbol } from "expo-symbols";
+import type { LucideIcon } from "lucide-react-native";
 
 import { MinTapSize, Radius } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
@@ -11,7 +11,7 @@ type Variant = "filled" | "tinted" | "plain" | "destructive";
 
 export type ButtonProps = Omit<TouchableProps, "children"> & {
   title?: string;
-  symbol?: SFSymbol;
+  icon?: LucideIcon;
   variant?: Variant;
 };
 
@@ -21,7 +21,7 @@ export type ButtonProps = Omit<TouchableProps, "children"> & {
  */
 export function Button({
   title,
-  symbol,
+  icon,
   variant = "filled",
   disabled,
   style,
@@ -31,7 +31,14 @@ export function Button({
 
   const filled = variant === "filled";
   const tinted = variant === "tinted";
-  const textColor = filled ? "onTint" : variant === "destructive" ? "systemRed" : "systemBlue";
+  // Disabled is shown by colour, not by fading: grey text on a grey fill.
+  const textColor = disabled
+    ? "systemGray2"
+    : filled
+      ? "onTint"
+      : variant === "destructive"
+        ? "systemRed"
+        : "systemBlue";
 
   return (
     <Pressable
@@ -49,17 +56,18 @@ export function Button({
           borderRadius: Radius.full,
           borderCurve: "continuous",
           backgroundColor: filled
-            ? theme.systemBlue
+            ? disabled
+              ? theme.systemFill
+              : theme.systemBlue
             : tinted
               ? theme.systemFill
               : undefined,
-          opacity: disabled ? 0.4 : 1,
         },
         style,
       ]}
       {...props}
     >
-      {symbol && <Icon name={symbol} size={18} color={textColor} />}
+      {icon && <Icon icon={icon} size={18} color={textColor} />}
       {title && (
         <Text variant="body" weight={filled ? "semibold" : undefined} color={textColor}>
           {title}

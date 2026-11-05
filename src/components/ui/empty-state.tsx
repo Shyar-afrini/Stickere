@@ -1,4 +1,6 @@
-import type { SFSymbol } from "expo-symbols";
+import type { LucideIcon } from "lucide-react-native";
+
+import { useHeaderInset } from "@/hooks/use-header-inset";
 
 import { Box } from "./box";
 import { Button } from "./button";
@@ -6,17 +8,19 @@ import { Icon } from "./icon";
 import { Text } from "./text";
 
 type Props = {
-  symbol: SFSymbol;
+  icon: LucideIcon;
   title: string;
   description: string;
   action?: { label: string; onPress: () => void };
 };
 
-/** iOS "content unavailable" view: symbol, title, description and optional action. */
-export function EmptyState({ symbol, title, description, action }: Props) {
+/** iOS "content unavailable" view: icon, title, description and optional action. */
+export function EmptyState({ icon, title, description, action }: Props) {
+  const headerInset = useHeaderInset();
+
   return (
-    <Box flex={1} center px="xxxl" gap="sm">
-      <Icon name={symbol} size={56} color="tertiaryLabel" />
+    <Box flex={1} center px="xxxl" gap="sm" style={{ paddingTop: headerInset }}>
+      <Icon icon={icon} size={56} color="systemGray2" />
       <Text variant="title2" weight="bold" align="center" style={{ marginTop: 8 }}>
         {title}
       </Text>

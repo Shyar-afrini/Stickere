@@ -27,23 +27,31 @@ export async function getCurrentStickerLocation(): Promise<LocationResult> {
     accuracy: Location.Accuracy.Balanced,
   });
 
+  return {
+    status: "granted",
+    location: await describePoint(coords.latitude, coords.longitude),
+  };
+}
+
+/** Resolves a readable place name for a point, e.g. the one stored in a photo. */
+export async function describePoint(
+  latitude: number,
+  longitude: number,
+): Promise<StickerLocation> {
   let place: Location.LocationGeocodedAddress | undefined;
   try {
-    [place] = await Location.reverseGeocodeAsync(coords);
+    [place] = await Location.reverseGeocodeAsync({ latitude, longitude });
   } catch {
     // Reverse geocoding needs network access; the coordinates alone are enough.
   }
 
   return {
-    status: "granted",
-    location: {
-      latitude: coords.latitude,
-      longitude: coords.longitude,
-      radiusMeters: DEFAULT_RADIUS_METERS,
-      placeName: place?.name ?? place?.street ?? null,
-      locality: place?.city ?? place?.subregion ?? null,
-      country: place?.country ?? null,
-    },
+    latitude,
+    longitude,
+    radiusMeters: DEFAULT_RADIUS_METERS,
+    placeName: place?.name ?? place?.street ?? null,
+    locality: place?.city ?? place?.subregion ?? null,
+    country: place?.country ?? null,
   };
 }
 

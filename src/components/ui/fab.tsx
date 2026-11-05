@@ -1,4 +1,4 @@
-import type { SFSymbol } from "expo-symbols";
+import { Plus, type LucideIcon } from "lucide-react-native";
 import { useState } from "react";
 import { StyleSheet } from "react-native";
 import Animated, {
@@ -7,9 +7,9 @@ import Animated, {
   FadeOut,
   FadeOutDown,
 } from "react-native-reanimated";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Shadows } from "@/constants/theme";
+import { useTabBarInset } from "@/hooks/use-tab-bar-inset";
 import { useTheme } from "@/hooks/use-theme";
 
 import { Icon } from "./icon";
@@ -18,7 +18,7 @@ import { Text } from "./text";
 
 export type FabAction = {
   label: string;
-  symbol: SFSymbol;
+  icon: LucideIcon;
   onPress: () => void;
 };
 
@@ -28,7 +28,7 @@ export type FabAction = {
  */
 export function Fab({ actions }: { actions: FabAction[] }) {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
+  const tabInset = useTabBarInset();
   const [open, setOpen] = useState(false);
 
   const single = actions.length === 1;
@@ -55,7 +55,7 @@ export function Fab({ actions }: { actions: FabAction[] }) {
         style={{
           position: "absolute",
           right: 20,
-          bottom: insets.bottom + 16,
+          bottom: tabInset + 16,
           alignItems: "flex-end",
           gap: 12,
         }}
@@ -87,7 +87,7 @@ export function Fab({ actions }: { actions: FabAction[] }) {
                   Shadows.popover,
                 ]}
               >
-                <Icon name={action.symbol} size={18} color="systemBlue" />
+                <Icon icon={action.icon} size={18} color="systemBlue" />
                 <Text>{action.label}</Text>
               </Pressable>
             </Animated.View>
@@ -117,7 +117,7 @@ export function Fab({ actions }: { actions: FabAction[] }) {
               transform: [{ rotate: open ? "45deg" : "0deg" }],
             }}
           >
-            <Icon name="plus" size={24} color="onTint" weight="semibold" />
+            <Icon icon={Plus} size={24} color="onTint" strokeWidth={2.5} />
           </Animated.View>
         </Pressable>
       </Animated.View>

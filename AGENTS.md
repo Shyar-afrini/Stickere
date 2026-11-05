@@ -39,3 +39,9 @@ Docs: https://docs.expo.dev/eas/index.md
 - If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
 - Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
 - Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+
+## Icons
+
+- Use **Lucide** (`lucide-react-native`) for every icon, and only Lucide. Never use SF Symbols (`expo-symbols`), `@expo/vector-icons` or other icon sets.
+- In app UI render icons through the `Icon` component (`@/components/ui`), passing the Lucide component: `<Icon icon={Plus} />`. Components that take an icon (`Button`, `HeaderButton`, `EmptyState`, `Fab`) take a `LucideIcon` in an `icon` prop.
+- The tab bar is a custom blurred pill (`src/app/(pages)/_layout.tsx`), so tab icons are plain Lucide components passed to `Icon`.

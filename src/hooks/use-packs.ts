@@ -1,4 +1,4 @@
-import { asc, desc, eq, sql } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 
 import { db } from "@/db";
@@ -11,6 +11,7 @@ export function usePacks() {
       .select({
         id: packs.id,
         name: packs.name,
+        isLocked: packs.isLocked,
         // Table names are written out because Drizzle drops the qualifier from
         // interpolated columns inside a select, which would make the subquery
         // compare `stickers.id` with itself.
@@ -20,7 +21,7 @@ export function usePacks() {
         >`(select stickers.path from stickers where stickers.pack_id = packs.id order by stickers.position, stickers.id limit 1)`,
       })
       .from(packs)
-      .orderBy(desc(packs.updatedAt)),
+      .orderBy(asc(packs.position), asc(packs.id)),
   );
 
   return { packs: data, isLoading: updatedAt === undefined };

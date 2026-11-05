@@ -1,0 +1,1 @@
+ALTER TABLE `packs` ADD `is_locked` integer DEFAULT false NOT NULL;
