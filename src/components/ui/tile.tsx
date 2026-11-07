@@ -18,7 +18,10 @@ export function Tile({ children }: { children: ReactNode }) {
       p="xs"
       bg="secondarySystemGroupedBackground"
       radius="xl"
-      style={{ borderWidth: StyleSheet.hairlineWidth, borderColor: theme.separator }}
+      style={{
+        borderWidth: StyleSheet.hairlineWidth,
+        borderColor: theme.separator,
+      }}
     >
       <Box
         flex={1}

@@ -28,8 +28,10 @@ export type Draft = Omit<StoredDraft, "original"> & {
 const root = () => Paths.document.uri;
 const directory = () => new Directory(Paths.document, DIRECTORY);
 
-const toRelative = (uri: string) => (uri.startsWith(root()) ? uri.slice(root().length) : uri);
-const toAbsolute = (path: string) => (path.startsWith("file:") ? path : root() + path);
+const toRelative = (uri: string) =>
+  uri.startsWith(root()) ? uri.slice(root().length) : uri;
+const toAbsolute = (path: string) =>
+  path.startsWith("file:") ? path : root() + path;
 
 function readAll(): StoredDraft[] {
   try {
@@ -39,7 +41,8 @@ function readAll(): StoredDraft[] {
   }
 }
 
-const writeAll = (drafts: StoredDraft[]) => Storage.setItemSync(KEY, JSON.stringify(drafts));
+const writeAll = (drafts: StoredDraft[]) =>
+  Storage.setItemSync(KEY, JSON.stringify(drafts));
 
 /** Applies `change` to every file path inside the editor state (base photo and sticker layers). */
 function mapUris(editor: Editor, change: (uri: string) => string): Editor {
@@ -47,14 +50,20 @@ function mapUris(editor: Editor, change: (uri: string) => string): Editor {
     ...editor,
     ...(editor.baseUri && { baseUri: change(editor.baseUri) }),
     ops: editor.ops?.map((op) =>
-      op.kind === "layer" && op.type === "image" ? { ...op, value: change(op.value) } : op,
+      op.kind === "layer" && op.type === "image"
+        ? { ...op, value: change(op.value) }
+        : op,
     ),
   };
 }
 
 function resolve(draft: StoredDraft): Draft {
   const { original, editor, ...rest } = draft;
-  return { ...rest, originalUri: toAbsolute(original), editor: mapUris(editor, toAbsolute) };
+  return {
+    ...rest,
+    originalUri: toAbsolute(original),
+    editor: mapUris(editor, toAbsolute),
+  };
 }
 
 /** Newest first. */
@@ -90,11 +99,19 @@ type SaveInput = {
   editor: Editor;
 };
 
-export async function saveDraft({ id, params, originalUri, editor }: SaveInput) {
+export async function saveDraft({
+  id,
+  params,
+  originalUri,
+  editor,
+}: SaveInput) {
   const draftId = id ?? `${Date.now()}`;
 
   const original = await keep(originalUri, `${draftId}-original`);
-  const baseUri = editor.baseUri && editor.baseUri !== originalUri ? await keep(editor.baseUri, `${draftId}-base`) : original;
+  const baseUri =
+    editor.baseUri && editor.baseUri !== originalUri
+      ? await keep(editor.baseUri, `${draftId}-base`)
+      : original;
 
   const stored: StoredDraft = {
     id: draftId,
@@ -113,7 +130,8 @@ export function deleteDraft(id: string) {
     const folder = directory();
     if (!folder.exists) return;
     for (const entry of folder.list()) {
-      if (entry instanceof File && entry.name.startsWith(`${id}-`)) entry.delete();
+      if (entry instanceof File && entry.name.startsWith(`${id}-`))
+        entry.delete();
     }
   } catch {
     // The index is already updated; leftover files are harmless.

@@ -74,7 +74,8 @@ TaskManager.defineTask<{
   if (here.length === 0) return;
 
   writeNotified({ ...notified, [key]: Date.now() });
-  const place = shortPlace(here[0].locality, here[0].placeName) ?? "a place you saved";
+  const place =
+    shortPlace(here[0].locality, here[0].placeName) ?? "a place you saved";
   await Notifications.scheduleNotificationAsync({
     content: {
       title: `You’re near ${place}`,
@@ -94,7 +95,13 @@ async function buildRegions(): Promise<Region[]> {
   const tagged = db
     .select()
     .from(stickers)
-    .where(and(inOpenPack(), isNotNull(stickers.latitude), isNotNull(stickers.longitude)))
+    .where(
+      and(
+        inOpenPack(),
+        isNotNull(stickers.latitude),
+        isNotNull(stickers.longitude),
+      ),
+    )
     .all();
 
   const places = new Map<string, Region>();

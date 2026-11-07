@@ -1,21 +1,21 @@
-import { Stack } from "expo-router";
-import type { NativeStackNavigationOptions } from "expo-router";
-
-import { SHEET_HEIGHT } from "@/constants/sheet";
+import { Stack, type StackNavigationOptions } from "expo-router/js-stack";
 
 import { AppHeader } from "@/components/app-header";
 import { useTheme } from "@/hooks/use-theme";
 
-// A bottom sheet on both platforms; Android draws it with its own sheet behaviour.
-const SHEET: NativeStackNavigationOptions = {
-  presentation: "formSheet",
+// This is a JS stack (not the native one) so that a sheet is drawn inside the tab layout, under the floating
+// tab bar, which therefore stays visible and tappable. A bottom sheet: a transparent screen that draws the app's frosted `RouteSheet` on it. Closing is handled by
+// the sheet itself (tap outside, drag the handle down), so the native gesture is off. Unsaved changes ask
+// first (`useConfirmDiscard`).
+const SHEET: StackNavigationOptions = {
+  presentation: "transparentModal",
+  animation: "none",
   headerShown: false,
-  // Pages only go back with the arrow, but a sheet closes the standard way: swipe it down (or Cancel,
-  // or Android's back). Unsaved changes ask first (`useConfirmDiscard`).
-  gestureEnabled: true,
-  sheetAllowedDetents: [SHEET_HEIGHT],
-  sheetGrabberVisible: true,
-  sheetCornerRadius: 24,
+  gestureEnabled: false,
+  cardStyle: { backgroundColor: "transparent" },
+  // The JS stack's own card shadow and dimming would paint over the page behind the sheet.
+  cardShadowEnabled: false,
+  cardOverlayEnabled: false,
 };
 
 export default function PacksLayout() {
@@ -27,14 +27,13 @@ export default function PacksLayout() {
         header: (props) => <AppHeader {...props} />,
         // Content runs underneath the bar; screens add `useHeaderInset()` of space at the top.
         headerTransparent: true,
-        // Going back is only done with the header arrow, never by swiping.
-        gestureEnabled: false,
-        fullScreenGestureEnabled: false,
+        // Swipe in from the screen edge to go back. Screens driven by hand gestures turn it off below.
+        gestureEnabled: true,
         headerShadowVisible: false,
         headerTintColor: theme.systemBlue,
         headerTitleStyle: { color: theme.label },
         headerStyle: { backgroundColor: "transparent" },
-        contentStyle: { backgroundColor: theme.systemGroupedBackground },
+        cardStyle: { backgroundColor: theme.systemGroupedBackground },
       }}
     >
       <Stack.Screen
@@ -42,22 +41,31 @@ export default function PacksLayout() {
         options={{
           // No title at all: the grid starts right under the header buttons.
           title: "",
-          headerLargeTitleEnabled: false,
         }}
       />
       <Stack.Screen name="[id]" options={{ title: "" }} />
-      <Stack.Screen name="map" options={{ title: "" }} />
-      <Stack.Screen name="sticker" options={{ title: "" }} />
+      <Stack.Screen name="map" options={{ title: "", gestureEnabled: false }} />
+      <Stack.Screen
+        name="sticker"
+        options={{ title: "", gestureEnabled: false }}
+      />
       <Stack.Screen name="settings" options={{ title: "Settings" }} />
       <Stack.Screen name="pin" options={{ title: "" }} />
-      <Stack.Screen
-        name="new-pack"
-        options={{ ...SHEET, title: "New Pack" }}
-      />
+      <Stack.Screen name="new-pack" options={{ ...SHEET, title: "New Pack" }} />
       <Stack.Screen name="pack-page" options={{ title: "New Pack" }} />
       <Stack.Screen name="drafts" options={{ title: "Drafts" }} />
-      <Stack.Screen name="edit-image" options={{ title: "" }} />
-      <Stack.Screen name="new-sticker" options={{ ...SHEET, title: "New Sticker" }} />
+      <Stack.Screen
+        name="edit-image"
+        options={{ title: "", gestureEnabled: false }}
+      />
+      <Stack.Screen
+        name="share-sticker"
+        options={{ ...SHEET, title: "Share" }}
+      />
+      <Stack.Screen
+        name="new-sticker"
+        options={{ ...SHEET, title: "New Sticker" }}
+      />
     </Stack>
   );
 }

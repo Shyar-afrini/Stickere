@@ -234,8 +234,10 @@ export default function StickerMap() {
                 style={{ flex: 1 }}
                 numberOfLines={1}
               >
-                {shortPlace(selected.stickers[0].placeName, selected.stickers[0].locality) ??
-                  "Saved place"}
+                {shortPlace(
+                  selected.stickers[0].placeName,
+                  selected.stickers[0].locality,
+                ) ?? "Saved place"}
               </Text>
               <Text variant="footnote" color="secondaryLabel">
                 {selected.stickers.length}{" "}

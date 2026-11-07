@@ -57,6 +57,13 @@
       "when": 1794077270050,
       "tag": "0007_tranquil_lilandra",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1794078787848,
+      "tag": "0008_amusing_guardsmen",
+      "breakpoints": true
     }
   ]
 }

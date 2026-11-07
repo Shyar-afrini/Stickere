@@ -1,4 +1,9 @@
-import { index, integer, primaryKey, sqliteTable } from "drizzle-orm/sqlite-core";
+import {
+  index,
+  integer,
+  primaryKey,
+  sqliteTable,
+} from "drizzle-orm/sqlite-core";
 
 import { stickers } from "./stickers";
 import { tags } from "./tags";

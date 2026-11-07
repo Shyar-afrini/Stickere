@@ -18,7 +18,7 @@ export function TabStrip<T extends string>({
   const theme = useTheme();
 
   return (
-    <HScroll gap="sm" >
+    <HScroll gap="sm">
       {tabs.map((tab) => {
         const selected = tab.key === value;
         return (
@@ -32,9 +32,15 @@ export function TabStrip<T extends string>({
               px="lg"
               py="sm"
               radius="full"
-              style={{ backgroundColor: selected ? theme.systemBlue : theme.systemFill }}
+              style={{
+                backgroundColor: selected ? theme.systemBlue : theme.systemFill,
+              }}
             >
-              <Text variant="subheadline" weight="semibold" color={selected ? "onTint" : "label"}>
+              <Text
+                variant="subheadline"
+                weight="semibold"
+                color={selected ? "onTint" : "label"}
+              >
                 {tab.label}
               </Text>
             </Box>

@@ -9,7 +9,7 @@ import {
   Screen,
   ScrollView,
   Toggle,
-  showAlert,
+  showToast,
 } from "@/components/ui";
 import {
   disableArrivalReminders,
@@ -36,17 +36,14 @@ export default function Reminders() {
       const result = await enableArrivalReminders();
       setEnabled(result === "enabled");
       if (result !== "enabled") {
-        showAlert(
+        showToast(
           result === "location-denied"
             ? "Location Access Needed"
             : "Notifications Are Off",
           result === "location-denied"
             ? "Reminders work in the background, so Stickerê needs location access set to “Always”."
             : "Allow notifications in Settings to get reminders.",
-          [
-            { text: "Cancel", style: "cancel" },
-            { text: "Open Settings", onPress: () => openAppSettings() },
-          ],
+          { label: "Settings", onPress: () => openAppSettings() },
         );
       }
     } finally {
@@ -56,7 +53,14 @@ export default function Reminders() {
 
   return (
     <Screen>
-      <ScrollView gap="xl" py="lg" contentContainerStyle={{ paddingTop: headerInset + Spacing.sm, paddingBottom: tabInset }}>
+      <ScrollView
+        gap="xl"
+        py="lg"
+        contentContainerStyle={{
+          paddingTop: headerInset + Spacing.sm,
+          paddingBottom: tabInset,
+        }}
+      >
         <ListSection footer="Get a notification when you arrive at a place where you saved stickers. Up to 20 places are watched at a time, nearest first. On Android, reminders can pause if the system closes the app.">
           <ListRow
             label="Remind Me at Saved Places"

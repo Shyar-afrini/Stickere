@@ -17,7 +17,10 @@ type Step = "current" | "new" | "confirm";
 export default function PinSetup() {
   const router = useRouter();
   const headerInset = useHeaderInset();
-  const { enable, packId } = useLocalSearchParams<{ enable?: "app" | "pack"; packId?: string }>();
+  const { enable, packId } = useLocalSearchParams<{
+    enable?: "app" | "pack";
+    packId?: string;
+  }>();
   const [changing] = useState(hasPin);
   const [step, setStep] = useState<Step>(changing ? "current" : "new");
   const [first, setFirst] = useState("");
@@ -29,7 +32,12 @@ export default function PinSetup() {
     if (step === "current") {
       const result = await verifyPin(pin);
       if (result === "ok") setStep("new");
-      else setError(result === "locked" ? "Too many attempts. Try again in 30 seconds." : "Wrong PIN. Try again.");
+      else
+        setError(
+          result === "locked"
+            ? "Too many attempts. Try again in 30 seconds."
+            : "Wrong PIN. Try again.",
+        );
     } else if (step === "new") {
       setFirst(pin);
       setStep("confirm");
@@ -51,7 +59,11 @@ export default function PinSetup() {
   };
 
   return (
-    <Screen center bg="systemGroupedBackground" style={{ paddingTop: headerInset }}>
+    <Screen
+      center
+      bg="systemGroupedBackground"
+      style={{ paddingTop: headerInset }}
+    >
       {/* The PIN pad names the step itself, so the bar has no title. */}
       <Stack.Screen options={{ title: "" }} />
       <PinPad

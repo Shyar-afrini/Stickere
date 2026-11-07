@@ -6,13 +6,18 @@ import { pickImage } from "@/lib/pick-image";
  * Opens the photo picker first; the editing tools appear once a photo is chosen,
  * and "Next" there leads to the details. GIFs go straight to the details. Without a `packId` the editor lets the user choose the pack.
  */
-export async function startNewSticker(router: ReturnType<typeof useRouter>, packId?: number) {
+export async function startNewSticker(
+  router: ReturnType<typeof useRouter>,
+  packId?: number,
+) {
   const picked = await pickImage();
   if (!picked) return;
 
   // The editing canvas draws a single frame, so a GIF skips it and keeps its animation.
   const pathname =
-    picked.mimeType === "image/gif" ? "/(pages)/(packs)/new-sticker" : "/(pages)/(packs)/edit-image";
+    picked.mimeType === "image/gif"
+      ? "/(pages)/(packs)/new-sticker"
+      : "/(pages)/(packs)/edit-image";
 
   router.push({
     pathname,

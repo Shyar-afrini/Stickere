@@ -1,4 +1,4 @@
-import type { NativeStackHeaderProps } from "expo-router";
+import type { StackHeaderProps } from "expo-router/js-stack";
 import { ChevronLeft } from "lucide-react-native";
 import { StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -11,7 +11,7 @@ import { HEADER_BAR } from "@/hooks/use-header-inset";
  * its buttons in a system pill, so the bar is drawn here: frosted buttons like
  * the floating tab bar, an optional centered title, and no background of its own: it is always transparent.
  */
-export function AppHeader({ options, back, navigation }: NativeStackHeaderProps) {
+export function AppHeader({ options, back, navigation }: StackHeaderProps) {
   const insets = useSafeAreaInsets();
   const title = typeof options.title === "string" ? options.title : "";
   const props = { canGoBack: back !== undefined };
@@ -19,7 +19,11 @@ export function AppHeader({ options, back, navigation }: NativeStackHeaderProps)
   const left =
     options.headerLeft?.(props) ??
     (back ? (
-      <HeaderButton icon={ChevronLeft} accessibilityLabel="Back" onPress={navigation.goBack} />
+      <HeaderButton
+        icon={ChevronLeft}
+        accessibilityLabel="Back"
+        onPress={navigation.goBack}
+      />
     ) : null);
   const right = options.headerRight?.(props);
 
@@ -58,7 +62,7 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
     paddingHorizontal: 8,
   },
-  side: { flexDirection: "row", alignItems: "center", minWidth: 56 },
+  side: { flexDirection: "row", alignItems: "center", minWidth: 64 },
   right: { justifyContent: "flex-end" },
   titleShadow: { borderRadius: 20, maxWidth: "100%" },
   titleGlass: {
@@ -72,9 +76,9 @@ const styles = StyleSheet.create({
   },
   title: {
     position: "absolute",
-    left: 72,
-    right: 72,
-    bottom: 4,
+    left: 88,
+    right: 88,
+    bottom: 8,
     alignItems: "center",
   },
 });

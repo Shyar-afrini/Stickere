@@ -1,15 +1,19 @@
-import { Ellipsis, Smile } from "lucide-react-native";
+import { Ellipsis, Pencil, Share, Smile, Trash2 } from "lucide-react-native";
+import { useState } from "react";
+import { StyleSheet } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 
+import { LoadingScreen } from "@/components/loading-screen";
 import { LockScreen } from "@/components/lock-screen";
 import { StickerMasonry } from "@/components/sticker-masonry";
 import {
+  Box,
   EmptyState,
   HeaderButton,
+  Menu,
   Screen,
-  confirmDelete,
-  showActionSheet,
-  showAlert,
+  showToast,
+  type MenuItem,
 } from "@/components/ui";
 import { deletePack, reorderStickers } from "@/db/mutations";
 import { useReorder } from "@/hooks/use-reorder";
@@ -18,6 +22,7 @@ import { unlockPack, useLockState } from "@/lib/lock-state";
 import { startNewSticker } from "@/lib/add-sticker";
 import { ShareError, sharePack, type StickerApp } from "@/lib/sticker-share";
 import { Haptic } from "@/lib/haptics";
+import { setResumeRoute } from "@/lib/settings";
 
 export default function PackDetail() {
   const router = useRouter();
@@ -25,10 +30,17 @@ export default function PackDetail() {
   const packId = Number(id);
   const { pack, stickers, isLoading } = usePack(packId);
   const { unlockedPacks } = useLockState();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [adding, setAdding] = useState(false);
   const reorder = useReorder(
     stickers,
     (sticker) => String(sticker.id),
-    (next) => reorderStickers(packId, next.map((sticker) => sticker.id)),
+    (next) =>
+      reorderStickers(
+        packId,
+        next.map((sticker) => sticker.id),
+      ),
   );
 
   if (isLoading) {
@@ -40,7 +52,10 @@ export default function PackDetail() {
   }
 
   const share = async (app: StickerApp) => {
-    if (!pack) return;
+    if (!pack || sharing) return;
+    setSharing(true);
+    // If the system restarts the app while the other app is in front, it comes back to this pack.
+    setResumeRoute(`/(pages)/(packs)/${packId}`);
     try {
       await sharePack(app, pack, stickers);
     } catch (error) {
@@ -53,40 +68,66 @@ export default function PackDetail() {
             ? error.message
             : "Something went wrong while sharing.";
       Haptic.error();
-      showAlert("Couldn’t Share Pack", message);
+      showToast("Couldn’t Share Pack", message);
+    } finally {
+      setResumeRoute(null);
+      setSharing(false);
     }
   };
 
-  const chooseShareTarget = () =>
-    showAlert("Share Pack", "Add this pack to a messaging app.", [
-      { text: "WhatsApp", onPress: () => share("whatsapp") },
-      { text: "Telegram", onPress: () => share("telegram") },
-      { text: "Cancel", style: "cancel" },
-    ]);
-
-  const askDelete = () =>
-    confirmDelete({
-      title: `Delete “${pack?.name ?? "pack"}”?`,
-      message: "The pack and all of its stickers will be deleted.",
-      onConfirm: () => {
+  const menuItems: MenuItem[] = [
+    {
+      key: "edit",
+      label: "Edit Pack",
+      icon: Pencil,
+      onPress: () =>
+        router.push({
+          pathname: "/(pages)/(packs)/new-pack",
+          params: { packId },
+        }),
+    },
+    ...(stickers.length > 0
+      ? [
+          {
+            key: "export",
+            label: "Export Pack",
+            icon: Share,
+            items: [
+              {
+                key: "whatsapp",
+                label: "WhatsApp",
+                onPress: () => share("whatsapp"),
+              },
+              {
+                key: "telegram",
+                label: "Telegram",
+                onPress: () => share("telegram"),
+              },
+            ],
+          },
+        ]
+      : []),
+    {
+      key: "delete",
+      label: "Delete Pack",
+      icon: Trash2,
+      destructive: true,
+      confirm: "Tap again to delete",
+      onPress: () => {
         router.back();
         deletePack(packId);
       },
-    });
-
-  const openActions = () =>
-    showActionSheet(pack?.name ?? "Pack", [
-      {
-        label: "Edit Pack",
-        onPress: () =>
-          router.push({ pathname: "/(pages)/(packs)/new-pack", params: { packId } }),
-      },
-      ...(stickers.length > 0 ? [{ label: "Export Pack", onPress: chooseShareTarget }] : []),
-      { label: "Delete Pack", destructive: true, onPress: askDelete },
-    ]);
+    },
+  ];
 
   return (
     <Screen>
+      {/* Covers the page while the pack is being prepared and handed to the other app. */}
+      {sharing && (
+        <Box style={[StyleSheet.absoluteFill, { zIndex: 10 }]}>
+          <LoadingScreen />
+        </Box>
+      )}
       <Stack.Screen
         options={{
           title: pack?.name ?? "",
@@ -94,10 +135,14 @@ export default function PackDetail() {
             reorder.editing ? (
               <HeaderButton label="Done" bold onPress={reorder.stopEditing} />
             ) : (
-            <>
-              <HeaderButton icon={Ellipsis} accessibilityLabel="Pack actions" onPress={openActions} />
-            </>
-          ),
+              <>
+                <HeaderButton
+                  icon={Ellipsis}
+                  accessibilityLabel="Pack actions"
+                  onPress={() => setMenuOpen((open) => !open)}
+                />
+              </>
+            ),
         }}
       />
       {stickers.length === 0 ? (
@@ -105,7 +150,19 @@ export default function PackDetail() {
           icon={Smile}
           title="No Stickers"
           description="Add your first sticker to this pack."
-          action={{ label: "Add Sticker", onPress: () => startNewSticker(router, packId) }}
+          action={{
+            label: "Add Sticker",
+            loading: adding,
+            onPress: async () => {
+              if (adding) return;
+              setAdding(true);
+              try {
+                await startNewSticker(router, packId);
+              } finally {
+                setAdding(false);
+              }
+            },
+          }}
         />
       ) : (
         <StickerMasonry
@@ -119,6 +176,12 @@ export default function PackDetail() {
         />
       )}
 
+      <Menu
+        open={menuOpen}
+        title={pack?.name ?? "Pack"}
+        items={menuItems}
+        onClose={() => setMenuOpen(false)}
+      />
     </Screen>
   );
 }

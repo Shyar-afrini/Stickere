@@ -16,7 +16,12 @@ type Props = ScrollViewProps & {
 };
 
 /** Scroll view that respects the navigation bar and keyboard like a native iOS screen. */
-export function ScrollView({ gap, py, contentContainerStyle, ...props }: Props) {
+export function ScrollView({
+  gap,
+  py,
+  contentContainerStyle,
+  ...props
+}: Props) {
   return (
     <RNScrollView
       contentInsetAdjustmentBehavior="automatic"

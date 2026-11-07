@@ -18,7 +18,10 @@ export function HScroll({
       horizontal
       style={{ flexGrow: 0 }}
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ paddingHorizontal: Spacing[inset], gap: Spacing[gap] }}
+      contentContainerStyle={{
+        paddingHorizontal: Spacing[inset],
+        gap: Spacing[gap],
+      }}
     >
       {children}
     </RNScrollView>

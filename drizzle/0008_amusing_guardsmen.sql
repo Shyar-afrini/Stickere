@@ -1,0 +1,1 @@
+ALTER TABLE `stickers` ADD `story` text;

@@ -2,17 +2,28 @@ import { useRouter } from "expo-router";
 import { FileClock, Trash2 } from "lucide-react-native";
 import { useState } from "react";
 
-import { Box, EmptyState, Icon, Image, Pressable, Screen, ScrollView, Text, confirmDelete } from "@/components/ui";
+import {
+  Box,
+  EmptyState,
+  Icon,
+  Image,
+  Pressable,
+  Screen,
+  ScrollView,
+  Text,
+} from "@/components/ui";
 import { Spacing } from "@/constants/theme";
 import { useHeaderInset } from "@/hooks/use-header-inset";
 import { useTabBarInset } from "@/hooks/use-tab-bar-inset";
 import { deleteDraft, listDrafts } from "@/lib/drafts";
+import { Haptic } from "@/lib/haptics";
 
 export default function Drafts() {
   const router = useRouter();
   const tabInset = useTabBarInset();
   const headerInset = useHeaderInset();
   const [drafts, setDrafts] = useState(listDrafts);
+  const [armed, setArmed] = useState<string | null>(null);
 
   if (drafts.length === 0) {
     return (
@@ -28,7 +39,15 @@ export default function Drafts() {
 
   return (
     <Screen>
-      <ScrollView gap="md" py="lg" contentContainerStyle={{ paddingHorizontal: 16, paddingTop: headerInset + Spacing.sm, paddingBottom: tabInset }}>
+      <ScrollView
+        gap="md"
+        py="lg"
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingTop: headerInset + Spacing.sm,
+          paddingBottom: tabInset,
+        }}
+      >
         {drafts.map((draft) => (
           <Box
             key={draft.id}
@@ -42,9 +61,17 @@ export default function Drafts() {
             <Pressable
               accessibilityLabel="Continue editing"
               onPress={() =>
-                router.push({ pathname: "/(pages)/(packs)/edit-image", params: { draftId: draft.id } })
+                router.push({
+                  pathname: "/(pages)/(packs)/edit-image",
+                  params: { draftId: draft.id },
+                })
               }
-              style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 12 }}
+              style={{
+                flex: 1,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 12,
+              }}
             >
               <Image
                 source={{ uri: draft.editor.baseUri ?? draft.originalUri }}
@@ -59,19 +86,29 @@ export default function Drafts() {
               </Box>
             </Pressable>
             <Pressable
-              accessibilityLabel="Delete draft"
-              onPress={() =>
-                confirmDelete({
-                  title: "Delete Draft?",
-                  message: "This draft and its edits will be removed.",
-                  onConfirm: () => {
-                    deleteDraft(draft.id);
-                    setDrafts(listDrafts());
-                  },
-                })
+              accessibilityLabel={
+                armed === draft.id
+                  ? "Tap again to delete draft"
+                  : "Delete draft"
               }
+              onPress={() => {
+                if (armed !== draft.id) {
+                  Haptic.tap();
+                  setArmed(draft.id);
+                  return;
+                }
+                deleteDraft(draft.id);
+                setArmed(null);
+                setDrafts(listDrafts());
+              }}
             >
-              <Icon icon={Trash2} size={20} color="systemRed" />
+              {armed === draft.id ? (
+                <Text variant="subheadline" weight="semibold" color="systemRed">
+                  Delete?
+                </Text>
+              ) : (
+                <Icon icon={Trash2} size={20} color="systemRed" />
+              )}
             </Pressable>
           </Box>
         ))}

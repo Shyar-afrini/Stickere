@@ -2,10 +2,8 @@ import { View, type ViewProps, type ViewStyle } from "react-native";
 
 import {
   Radius,
-  Shadows,
   Spacing,
   type RadiusKey,
-  type ShadowKey,
   type SpaceKey,
   type ThemeColor,
 } from "@/constants/theme";
@@ -27,7 +25,6 @@ export type BoxProps = ViewProps & {
   center?: boolean;
   bg?: ThemeColor;
   radius?: RadiusKey;
-  shadow?: ShadowKey;
   overflow?: ViewStyle["overflow"];
   aspectRatio?: number;
 };
@@ -47,7 +44,6 @@ export function Box({
   center,
   bg,
   radius,
-  shadow,
   overflow,
   aspectRatio,
   style,
@@ -71,11 +67,12 @@ export function Box({
     borderCurve: radius ? "continuous" : undefined,
     overflow,
     aspectRatio,
-    ...(shadow && Shadows[shadow]),
   };
 
   return <View style={[computed, style]} {...props} />;
 }
 
-export const HStack = (props: BoxProps) => <Box row align="center" {...props} />;
+export const HStack = (props: BoxProps) => (
+  <Box row align="center" {...props} />
+);
 export const VStack = (props: BoxProps) => <Box {...props} />;

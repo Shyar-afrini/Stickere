@@ -21,13 +21,26 @@ export function LoadingScreen() {
   const [tip] = useState(() => TIPS[Math.floor(Math.random() * TIPS.length)]);
 
   return (
-    <Box flex={1} center bg="systemGroupedBackground" style={{ paddingHorizontal: 40 }}>
+    <Box
+      flex={1}
+      center
+      bg="systemGroupedBackground"
+      style={{ paddingHorizontal: 40 }}
+    >
       <Image
         source={require("../../assets/loading.gif")}
         contentFit="contain"
-        style={{ width: ANIMATION_WIDTH, height: ANIMATION_WIDTH / ANIMATION_RATIO }}
+        style={{
+          width: ANIMATION_WIDTH,
+          height: ANIMATION_WIDTH / ANIMATION_RATIO,
+        }}
       />
-      <Text variant="caption1" weight="bold" color="secondaryLabel" style={{ marginTop: 28, letterSpacing: 1.2 }}>
+      <Text
+        variant="caption1"
+        weight="bold"
+        color="secondaryLabel"
+        style={{ marginTop: 28, letterSpacing: 1.2 }}
+      >
         TIP
       </Text>
       <Text variant="callout" align="center" style={{ marginTop: 6 }}>

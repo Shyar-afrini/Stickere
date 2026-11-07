@@ -1,7 +1,10 @@
 import { useId, useState, type ReactNode } from "react";
 import { PanResponder } from "react-native";
-import QRCode from "react-native-qrcode-svg";
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 import Svg, { Circle, Defs, Mask, Rect } from "react-native-svg";
 
 import { Box, Image, Text } from "@/components/ui";
@@ -68,7 +71,12 @@ export function StampFrame({
             ])}
           </Mask>
         </Defs>
-        <Rect width={width} height={height} fill={paper} mask={`url(#${maskId})`} />
+        <Rect
+          width={width}
+          height={height}
+          fill={paper}
+          mask={`url(#${maskId})`}
+        />
       </Svg>
       {children}
     </Box>
@@ -100,8 +108,20 @@ export function Stamp({ sticker, width }: { sticker: Sticker; width: number }) {
             style={{ width: "100%", height: "100%" }}
           />
         </Box>
-        <Box style={{ height: CAPTION, alignItems: "center", justifyContent: "center", paddingHorizontal: 8 }}>
-          <Text variant="title2" weight="bold" numberOfLines={1} style={{ color: palette.ink }}>
+        <Box
+          style={{
+            height: CAPTION,
+            alignItems: "center",
+            justifyContent: "center",
+            paddingHorizontal: 8,
+          }}
+        >
+          <Text
+            variant="title2"
+            weight="bold"
+            numberOfLines={1}
+            style={{ color: palette.ink }}
+          >
             {[sticker.name, ...sticker.emojis].join(" ")}
           </Text>
         </Box>
@@ -111,12 +131,23 @@ export function Stamp({ sticker, width }: { sticker: Sticker; width: number }) {
 }
 
 /** Small stamp without a caption, for map markers. */
-export function StampMark({ sticker, width }: { sticker: Sticker; width: number }) {
+export function StampMark({
+  sticker,
+  width,
+}: {
+  sticker: Sticker;
+  width: number;
+}) {
   const palette = stampPalette(sticker.id);
   const margin = Math.round(width * 0.14);
 
   return (
-    <StampFrame width={width} height={Math.round(width * 1.2)} paper={palette.paper} hole={2.5}>
+    <StampFrame
+      width={width}
+      height={Math.round(width * 1.2)}
+      paper={palette.paper}
+      hole={2.5}
+    >
       <Box
         style={{
           flex: 1,
@@ -144,58 +175,101 @@ type BackProps = {
   tags: string[];
 };
 
-/** What the back's QR code opens: the place in maps when there is one, otherwise a short note. */
-function qrValue({ sticker, tags }: Pick<BackProps, "sticker" | "tags">) {
-  if (sticker.latitude != null && sticker.longitude != null) {
-    return `https://maps.google.com/?q=${sticker.latitude},${sticker.longitude}`;
-  }
-  const hashtags = tags.map((tag) => `#${tag}`).join(" ");
-  return ["Stickerê", [sticker.name, ...sticker.emojis].join(" "), hashtags].filter(Boolean).join(" · ");
-}
-
-/** The back of a stamp: where and when it was made, tags, and a QR code to open the place. */
+/** The back of a stamp: the caption in handwriting, then where and when it was made, and its tags. */
 export function StampBack({ sticker, width, packName, tags }: BackProps) {
   const palette = stampPalette(sticker.id);
   const height = Math.round(width * 1.22);
-  const located = sticker.latitude != null && sticker.longitude != null;
   const place = placeLabel(sticker);
-  const made = sticker.createdAt.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
-  const qrSize = Math.min(Math.round(width * 0.46), 150);
+  const made = sticker.createdAt.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  const caption = sticker.story?.trim();
 
   return (
     <StampFrame width={width} height={height} paper={palette.paper}>
-      <Box style={{ flex: 1, padding: MARGIN, alignItems: "center", justifyContent: "space-between" }}>
+      <Box
+        style={{
+          flex: 1,
+          padding: MARGIN,
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
         <Box style={{ alignItems: "center", gap: 2 }}>
           {packName ? (
-            <Text variant="caption1" weight="bold" style={{ color: palette.panel, letterSpacing: 1.2 }}>
+            <Text
+              variant="caption1"
+              weight="bold"
+              style={{ color: palette.panel, letterSpacing: 1.2 }}
+            >
               {packName.toUpperCase()}
             </Text>
           ) : null}
-          <Text variant="title3" weight="bold" numberOfLines={1} style={{ color: palette.ink }}>
+          <Text
+            variant="title3"
+            weight="bold"
+            numberOfLines={1}
+            style={{ color: palette.ink }}
+          >
             {sticker.name}
           </Text>
         </Box>
 
-        <Box style={{ alignItems: "center", gap: 8 }}>
-          <Box style={{ padding: 8, borderRadius: 14, backgroundColor: "#FFFFFF" }}>
-            <QRCode value={qrValue({ sticker, tags })} size={qrSize} color="#111111" backgroundColor="#FFFFFF" />
-          </Box>
-          <Text variant="caption2" align="center" style={{ color: palette.ink, opacity: 0.8 }}>
-            {located ? "Scan to open this place in Maps" : "Scan to read this sticker’s details"}
+        <Box
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            paddingVertical: 12,
+            paddingHorizontal: 4,
+          }}
+        >
+          <Text
+            align="center"
+            numberOfLines={7}
+            adjustsFontSizeToFit
+            style={{
+              fontFamily: "Caveat",
+              fontWeight: "normal",
+              fontSize: 26,
+              lineHeight: 30,
+              letterSpacing: 0,
+              color: palette.ink,
+              opacity: caption ? 1 : 0.45,
+              transform: [{ rotate: "-2deg" }],
+            }}
+          >
+            {caption || "No caption yet…"}
           </Text>
         </Box>
 
         <Box style={{ alignItems: "center", gap: 2, paddingHorizontal: 6 }}>
           {place ? (
-            <Text variant="footnote" weight="semibold" align="center" numberOfLines={2} style={{ color: palette.ink }}>
+            <Text
+              variant="footnote"
+              weight="semibold"
+              align="center"
+              numberOfLines={2}
+              style={{ color: palette.ink }}
+            >
               {place}
             </Text>
           ) : null}
-          <Text variant="caption1" align="center" style={{ color: palette.ink, opacity: 0.8 }}>
+          <Text
+            variant="caption1"
+            align="center"
+            style={{ color: palette.ink, opacity: 0.8 }}
+          >
             Made {made}
           </Text>
           {tags.length > 0 ? (
-            <Text variant="caption1" align="center" numberOfLines={1} style={{ color: palette.panel }}>
+            <Text
+              variant="caption1"
+              align="center"
+              numberOfLines={1}
+              style={{ color: palette.panel }}
+            >
               {tags.map((tag) => `#${tag}`).join("  ")}
             </Text>
           ) : null}
@@ -210,7 +284,13 @@ export function StampBack({ sticker, width, packName, tags }: BackProps) {
  * vertical axis, up or down around the horizontal one. The card follows the finger and settles on
  * whichever face is nearer when released, or the other one after a quick flick.
  */
-export function FlipCard({ front, back }: { front: ReactNode; back: ReactNode }) {
+export function FlipCard({
+  front,
+  back,
+}: {
+  front: ReactNode;
+  back: ReactNode;
+}) {
   /** 0 = front showing, 1 = back showing. */
   const turn = useSharedValue(0);
   /** Axis of the current drag: 0 spins around the vertical axis, 1 around the horizontal one. */
@@ -221,11 +301,13 @@ export function FlipCard({ front, back }: { front: ReactNode; back: ReactNode })
   const [responder] = useState(() => {
     let start = 0;
     let locked = false;
-    const settle = (target: number) => turn.set(withSpring(target, Springs.settle));
+    const settle = (target: number) =>
+      turn.set(withSpring(target, Springs.settle));
 
     return PanResponder.create({
       onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_event, gesture) => Math.hypot(gesture.dx, gesture.dy) > 8,
+      onMoveShouldSetPanResponder: (_event, gesture) =>
+        Math.hypot(gesture.dx, gesture.dy) > 8,
       onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: () => {
         start = turn.get() > 0.5 ? 1 : 0;
@@ -238,7 +320,11 @@ export function FlipCard({ front, back }: { front: ReactNode; back: ReactNode })
         if (!locked) {
           locked = true;
           axis.set(sideways ? 0 : 1);
-          direction.set((distance >= 0 ? 1 : -1) * (start === 0 ? 1 : -1) * (sideways ? 1 : -1));
+          direction.set(
+            (distance >= 0 ? 1 : -1) *
+              (start === 0 ? 1 : -1) *
+              (sideways ? 1 : -1),
+          );
         }
         const along = axis.get() === 0 ? gesture.dx : gesture.dy;
         const progress = Math.min(Math.abs(along) / FLIP_DISTANCE, 1);
@@ -268,8 +354,17 @@ export function FlipCard({ front, back }: { front: ReactNode; back: ReactNode })
 
   return (
     <Box {...responder.panHandlers}>
-      <Animated.View style={[{ backfaceVisibility: "hidden" }, frontStyle]}>{front}</Animated.View>
-      <Animated.View style={[{ position: "absolute", backfaceVisibility: "hidden" }, backStyle]}>{back}</Animated.View>
+      <Animated.View style={[{ backfaceVisibility: "hidden" }, frontStyle]}>
+        {front}
+      </Animated.View>
+      <Animated.View
+        style={[
+          { position: "absolute", backfaceVisibility: "hidden" },
+          backStyle,
+        ]}
+      >
+        {back}
+      </Animated.View>
     </Box>
   );
 }

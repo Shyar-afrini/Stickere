@@ -8,26 +8,30 @@ import {
   Minus,
   Paintbrush,
   Plus,
+  Redo2,
   RotateCcw,
   RotateCw,
+  Save,
   Scissors,
   Smile,
   Trash2,
   Type,
-  Save,
-  Redo2,
   Undo2,
   type LucideIcon,
 } from "lucide-react-native";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Keyboard, useWindowDimensions } from "react-native";
 
-import { OUTLINE_MAX, StickerCanvas, exportRect } from "@/components/sticker-canvas";
+import {
+  OUTLINE_MAX,
+  StickerCanvas,
+  exportRect,
+} from "@/components/sticker-canvas";
 import {
   Box,
+  HScroll,
   HStack,
   HeaderButton,
-  HScroll,
   Icon,
   Image,
   ListRow,
@@ -39,17 +43,22 @@ import {
   Text,
   TextField,
   Toggle,
-  showAlert,
+  showToast,
 } from "@/components/ui";
 import { Colors } from "@/constants/theme";
 import { db } from "@/db";
 import { inOpenPack } from "@/db/filters";
 import { stickers } from "@/db/schema";
-import { StickerEditorStore, type Frame, type Tool } from "@/lib/sticker-editor-store";
 import { useHeaderInset } from "@/hooks/use-header-inset";
 import { useTheme } from "@/hooks/use-theme";
 import { getDraft, saveDraft } from "@/lib/drafts";
+import {
+  StickerEditorStore,
+  type Frame,
+  type Tool,
+} from "@/lib/sticker-editor-store";
 import { getStickerUri } from "@/lib/sticker-storage";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { makeSticker } from "../../../../modules/sticker-kit";
 
 // Text colors for stickers are fixed, so they take the light iOS system colors in either theme.
@@ -65,7 +74,28 @@ const COLORS = [
   Colors.light.systemPink,
 ];
 const BRUSHES = [8, 18, 34];
-const EMOJIS = ["😀", "😂", "😍", "😎", "🥳", "😭", "🔥", "💖", "👍", "🎉", "✨", "⭐", "🌈", "🍕", "☕", "🐶", "🐱", "🌸", "🚀", "👑"];
+const EMOJIS = [
+  "😀",
+  "😂",
+  "😍",
+  "😎",
+  "🥳",
+  "😭",
+  "🔥",
+  "💖",
+  "👍",
+  "🎉",
+  "✨",
+  "⭐",
+  "🌈",
+  "🍕",
+  "☕",
+  "🐶",
+  "🐱",
+  "🌸",
+  "🚀",
+  "👑",
+];
 const FRAMES: { key: Frame; label: string }[] = [
   { key: "none", label: "None" },
   { key: "rounded", label: "Rounded" },
@@ -81,14 +111,25 @@ const TOOLS: { key: Tool; label: string; icon: LucideIcon }[] = [
 ];
 
 /** Rough half-size of a text layer; text wraps at 300 wide, so the box never grows past half of that. */
-const textRadius = (value: string) => Math.min(150, Math.max(30, (value.length * 48 * 0.6) / 2));
+const textRadius = (value: string) =>
+  Math.min(150, Math.max(30, (value.length * 48 * 0.6) / 2));
 
-function ColorRow({ value, onChange }: { value: string; onChange: (color: string) => void }) {
+function ColorRow({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (color: string) => void;
+}) {
   const theme = useTheme();
   return (
     <HScroll gap="sm">
       {COLORS.map((color) => (
-        <Pressable key={color} accessibilityLabel={`Color ${color}`} onPress={() => onChange(color)}>
+        <Pressable
+          key={color}
+          accessibilityLabel={`Color ${color}`}
+          onPress={() => onChange(color)}
+        >
           <Box
             style={{
               width: 30,
@@ -96,7 +137,8 @@ function ColorRow({ value, onChange }: { value: string; onChange: (color: string
               borderRadius: 15,
               backgroundColor: color,
               borderWidth: value === color ? 3 : 1,
-              borderColor: value === color ? theme.systemBlue : theme.systemGray3,
+              borderColor:
+                value === color ? theme.systemBlue : theme.systemGray3,
             }}
           />
         </Pressable>
@@ -105,7 +147,13 @@ function ColorRow({ value, onChange }: { value: string; onChange: (color: string
   );
 }
 
-function BrushRow({ value, onChange }: { value: number; onChange: (size: number) => void }) {
+function BrushRow({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (size: number) => void;
+}) {
   const theme = useTheme();
   return (
     <HStack gap="lg" justify="center">
@@ -124,7 +172,14 @@ function BrushRow({ value, onChange }: { value: number; onChange: (size: number)
             borderColor: theme.systemBlue,
           }}
         >
-          <Box style={{ width: size / 1.5 + 4, height: size / 1.5 + 4, borderRadius: size, backgroundColor: theme.systemGray }} />
+          <Box
+            style={{
+              width: size / 1.5 + 4,
+              height: size / 1.5 + 4,
+              borderRadius: size,
+              backgroundColor: theme.systemGray,
+            }}
+          />
         </Pressable>
       ))}
     </HStack>
@@ -135,11 +190,14 @@ function BrushRow({ value, onChange }: { value: number; onChange: (size: number)
 export default function EditImage() {
   const router = useRouter();
   const headerInset = useHeaderInset();
+  const insets = useSafeAreaInsets();
   const theme = useTheme();
   const { height: windowHeight } = useWindowDimensions();
   const routeParams = useLocalSearchParams<Record<string, string>>();
   // Opened from the drafts list: carry on from the saved picture and its original params.
-  const [draft] = useState(() => (routeParams.draftId ? getDraft(routeParams.draftId) : undefined));
+  const [draft] = useState(() =>
+    routeParams.draftId ? getDraft(routeParams.draftId) : undefined,
+  );
   const params = draft ? { ...draft.params, draftId: draft.id } : routeParams;
   const original = {
     uri: draft ? draft.originalUri : params.uri,
@@ -151,19 +209,29 @@ export default function EditImage() {
   const [carried] = useState(() => {
     const { draftId: _resumed, ...rest } = params;
     return {
-      params: Object.fromEntries(Object.entries(rest).map(([key, value]) => [key, String(value)])),
+      params: Object.fromEntries(
+        Object.entries(rest).map(([key, value]) => [key, String(value)]),
+      ),
       originalUri: original.uri,
     };
   });
 
-  const [store] = useState(() => new StickerEditorStore(original, draft?.editor));
+  const [store] = useState(
+    () => new StickerEditorStore(original, draft?.editor),
+  );
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const canvasRef = useCanvasRef();
   const [side, setSide] = useState(0);
   const [text, setText] = useState("");
   const [processing, setProcessing] = useState(false);
   const [mine] = useState(() =>
-    db.select().from(stickers).where(inOpenPack()).orderBy(desc(stickers.id)).limit(16).all(),
+    db
+      .select()
+      .from(stickers)
+      .where(inOpenPack())
+      .orderBy(desc(stickers.id))
+      .limit(16)
+      .all(),
   );
 
   // Every change is kept as a draft until the sticker is created; the first one makes the draft.
@@ -196,12 +264,20 @@ export default function EditImage() {
     timer.current = setTimeout(persist, 600);
     return () => clearTimeout(timer.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.ops, state.frame, state.outline, state.outlineWidth, state.outlineColor, state.baseUri]);
+  }, [
+    state.ops,
+    state.frame,
+    state.outline,
+    state.outlineWidth,
+    state.outlineColor,
+    state.baseUri,
+  ]);
 
   const cutOut = state.baseUri !== original.uri;
   const selected = store.selected();
   const selectedText = selected?.type === "text" ? selected : undefined;
-  const changed = state.ops.length > 0 || state.frame !== "none" || state.outline || cutOut;
+  const changed =
+    state.ops.length > 0 || state.frame !== "none" || state.outline || cutOut;
 
   const runCutOut = async () => {
     setProcessing(true);
@@ -209,7 +285,10 @@ export default function EditImage() {
       const made = await makeSticker(original.uri, { outline: false });
       store.setBase(made);
     } catch (error) {
-      showAlert("Couldn’t Remove Background", error instanceof Error ? error.message : "Something went wrong.");
+      showToast(
+        "Couldn’t Remove Background",
+        error instanceof Error ? error.message : "Something went wrong.",
+      );
     } finally {
       setProcessing(false);
     }
@@ -236,7 +315,13 @@ export default function EditImage() {
   };
 
   const addGlyph = (type: "emoji" | "image", value: string) =>
-    store.addLayer({ type, value, x: side / 2, y: side / 2, radius: type === "emoji" ? 34 : 60 });
+    store.addLayer({
+      type,
+      value,
+      x: side / 2,
+      y: side / 2,
+      radius: type === "emoji" ? 34 : 60,
+    });
 
   const saveAsDraft = async () => {
     setProcessing(true);
@@ -249,9 +334,14 @@ export default function EditImage() {
     // Settle the autosave first, so the draft id is known and nothing is saved after the sticker is made.
     clearTimeout(timer.current);
     await saving.current;
-    const forward = { ...params, ...(draftId.current && { draftId: draftId.current }) };
+    const forward = {
+      ...params,
+      ...(draftId.current && { draftId: draftId.current }),
+    };
     if (changed) {
-      const snapshot = canvasRef.current?.makeImageSnapshot(exportRect(side, state));
+      const snapshot = canvasRef.current?.makeImageSnapshot(
+        exportRect(side, state),
+      );
       if (!snapshot) return;
       setProcessing(true);
       try {
@@ -266,7 +356,7 @@ export default function EditImage() {
         });
       } catch {
         setProcessing(false);
-        return showAlert("Couldn’t Save Edits", "Please try again.");
+        return showToast("Couldn’t Save Edits", "Please try again.");
       }
       setProcessing(false);
     }
@@ -287,10 +377,18 @@ export default function EditImage() {
           headerRight: () => (
             <>
               {state.ops.length > 0 && (
-                <HeaderButton icon={Undo2} accessibilityLabel="Undo" onPress={() => store.undo()} />
+                <HeaderButton
+                  icon={Undo2}
+                  accessibilityLabel="Undo"
+                  onPress={() => store.undo()}
+                />
               )}
               {store.canRedo && (
-                <HeaderButton icon={Redo2} accessibilityLabel="Redo" onPress={() => store.redo()} />
+                <HeaderButton
+                  icon={Redo2}
+                  accessibilityLabel="Redo"
+                  onPress={() => store.redo()}
+                />
               )}
               <HeaderButton
                 icon={Save}
@@ -298,7 +396,12 @@ export default function EditImage() {
                 disabled={processing || side === 0}
                 onPress={saveAsDraft}
               />
-              <HeaderButton label="Next" bold disabled={processing || side === 0} onPress={next} />
+              <HeaderButton
+                label="Next"
+                bold
+                disabled={processing || side === 0}
+                onPress={next}
+              />
             </>
           ),
         }}
@@ -325,22 +428,67 @@ export default function EditImage() {
         gap="md"
         py="sm"
         contentInsetAdjustmentBehavior="never"
-        style={{ flexGrow: 0, maxHeight: windowHeight * 0.42 }}
+        style={{
+          flexGrow: 0,
+          maxHeight: windowHeight * 0.42,
+          marginBottom: insets.bottom,
+        }}
       >
         {selected && tool !== "paint" && tool !== "eraser" && (
           <HStack gap="xl" justify="center">
             {(
               [
-                [Minus, "Smaller", () => store.updateSelected((l) => ({ scale: Math.max(0.3, l.scale * 0.85) }))],
-                [Plus, "Larger", () => store.updateSelected((l) => ({ scale: Math.min(6, l.scale * 1.15) }))],
-                [RotateCcw, "Rotate Left", () => store.updateSelected((l) => ({ rotation: l.rotation - Math.PI / 12 }))],
-                [RotateCw, "Rotate Right", () => store.updateSelected((l) => ({ rotation: l.rotation + Math.PI / 12 }))],
+                [
+                  Minus,
+                  "Smaller",
+                  () =>
+                    store.updateSelected((l) => ({
+                      scale: Math.max(0.3, l.scale * 0.85),
+                    })),
+                ],
+                [
+                  Plus,
+                  "Larger",
+                  () =>
+                    store.updateSelected((l) => ({
+                      scale: Math.min(6, l.scale * 1.15),
+                    })),
+                ],
+                [
+                  RotateCcw,
+                  "Rotate Left",
+                  () =>
+                    store.updateSelected((l) => ({
+                      rotation: l.rotation - Math.PI / 12,
+                    })),
+                ],
+                [
+                  RotateCw,
+                  "Rotate Right",
+                  () =>
+                    store.updateSelected((l) => ({
+                      rotation: l.rotation + Math.PI / 12,
+                    })),
+                ],
                 [Trash2, "Delete", () => store.removeSelected()],
               ] as [LucideIcon, string, () => void][]
             ).map(([glyph, label, onPress]) => (
-              <Pressable key={label} accessibilityLabel={label} onPress={onPress}>
-                <Box center bg="secondarySystemGroupedBackground" radius="full" style={{ width: 44, height: 44 }}>
-                  <Icon icon={glyph} size={20} color={label === "Delete" ? "systemRed" : "label"} />
+              <Pressable
+                key={label}
+                accessibilityLabel={label}
+                onPress={onPress}
+              >
+                <Box
+                  center
+                  bg="secondarySystemGroupedBackground"
+                  radius="full"
+                  style={{ width: 44, height: 44 }}
+                >
+                  <Icon
+                    icon={glyph}
+                    size={20}
+                    color={label === "Delete" ? "systemRed" : "label"}
+                  />
                 </Box>
               </Pressable>
             ))}
@@ -351,12 +499,21 @@ export default function EditImage() {
           <ListSection footer="The outline follows the original photo only. Works best on a physical device.">
             <ListRow
               label="Remove Background"
-              trailing={<Toggle value={cutOut} onValueChange={toggleCutOut} disabled={processing} />}
+              trailing={
+                <Toggle
+                  value={cutOut}
+                  onValueChange={toggleCutOut}
+                  disabled={processing}
+                />
+              }
             />
             <ListRow
               label="Outline"
               trailing={
-                <Toggle value={state.outline} onValueChange={(outline) => store.set({ outline })} />
+                <Toggle
+                  value={state.outline}
+                  onValueChange={(outline) => store.set({ outline })}
+                />
               }
             />
             {state.outline && (
@@ -386,17 +543,26 @@ export default function EditImage() {
                 value={selectedText ? selectedText.value : text}
                 onChangeText={(value) =>
                   selectedText
-                    ? store.updateSelected(() => ({ value, radius: textRadius(value) }))
+                    ? store.updateSelected(() => ({
+                        value,
+                        radius: textRadius(value),
+                      }))
                     : setText(value)
                 }
-                onSubmitEditing={selectedText ? () => Keyboard.dismiss() : addText}
+                onSubmitEditing={
+                  selectedText ? () => Keyboard.dismiss() : addText
+                }
                 placeholder="Type something…"
                 returnKeyType="done"
               />
             </ListSection>
             <ColorRow
               value={selectedText ? selectedText.color : state.color}
-              onChange={(color) => (selectedText ? store.updateSelected(() => ({ color })) : store.set({ color }))}
+              onChange={(color) =>
+                selectedText
+                  ? store.updateSelected(() => ({ color }))
+                  : store.set({ color })
+              }
             />
             {selectedText ? (
               <ListSection>
@@ -405,7 +571,9 @@ export default function EditImage() {
                   trailing={
                     <Toggle
                       value={selectedText.bold}
-                      onValueChange={(bold) => store.updateSelected(() => ({ bold }))}
+                      onValueChange={(bold) =>
+                        store.updateSelected(() => ({ bold }))
+                      }
                     />
                   }
                 />
@@ -414,7 +582,9 @@ export default function EditImage() {
                   trailing={
                     <Toggle
                       value={selectedText.outline}
-                      onValueChange={(outline) => store.updateSelected(() => ({ outline }))}
+                      onValueChange={(outline) =>
+                        store.updateSelected(() => ({ outline }))
+                      }
                     />
                   }
                 />
@@ -426,13 +596,17 @@ export default function EditImage() {
                         value={selectedText.outlineWidth}
                         min={1}
                         max={12}
-                        onChange={(outlineWidth) => store.updateSelected(() => ({ outlineWidth }))}
+                        onChange={(outlineWidth) =>
+                          store.updateSelected(() => ({ outlineWidth }))
+                        }
                       />
                     </Box>
                     <Box py="sm">
                       <ColorRow
                         value={selectedText.outlineColor}
-                        onChange={(outlineColor) => store.updateSelected(() => ({ outlineColor }))}
+                        onChange={(outlineColor) =>
+                          store.updateSelected(() => ({ outlineColor }))
+                        }
                       />
                     </Box>
                   </>
@@ -464,7 +638,9 @@ export default function EditImage() {
                 trailing={
                   <Toggle
                     value={selectedImage.outline}
-                    onValueChange={(outline) => store.updateSelected(() => ({ outline }))}
+                    onValueChange={(outline) =>
+                      store.updateSelected(() => ({ outline }))
+                    }
                   />
                 }
               />
@@ -476,28 +652,44 @@ export default function EditImage() {
                       value={selectedImage.outlineWidth}
                       min={1}
                       max={12}
-                      onChange={(outlineWidth) => store.updateSelected(() => ({ outlineWidth }))}
+                      onChange={(outlineWidth) =>
+                        store.updateSelected(() => ({ outlineWidth }))
+                      }
                     />
                   </Box>
                   <Box py="sm">
                     <ColorRow
                       value={selectedImage.outlineColor}
-                      onChange={(outlineColor) => store.updateSelected(() => ({ outlineColor }))}
+                      onChange={(outlineColor) =>
+                        store.updateSelected(() => ({ outlineColor }))
+                      }
                     />
                   </Box>
                 </>
               )}
             </ListSection>
             <ListSection>
-              <ListRow label="Done" tinted onPress={() => store.set({ tool: null, selectedId: null })} />
+              <ListRow
+                label="Done"
+                tinted
+                onPress={() => store.set({ tool: null, selectedId: null })}
+              />
             </ListSection>
           </>
         )}
 
         {!focused && (tool === "paint" || tool === "eraser") && (
           <>
-            {tool === "paint" && <ColorRow value={state.color} onChange={(color) => store.set({ color })} />}
-            <BrushRow value={state.brush} onChange={(brush) => store.set({ brush })} />
+            {tool === "paint" && (
+              <ColorRow
+                value={state.color}
+                onChange={(color) => store.set({ color })}
+              />
+            )}
+            <BrushRow
+              value={state.brush}
+              onChange={(brush) => store.set({ brush })}
+            />
           </>
         )}
 
@@ -505,7 +697,11 @@ export default function EditImage() {
           <>
             <HScroll gap="sm">
               {EMOJIS.map((emoji) => (
-                <Pressable key={emoji} accessibilityLabel={emoji} onPress={() => addGlyph("emoji", emoji)}>
+                <Pressable
+                  key={emoji}
+                  accessibilityLabel={emoji}
+                  onPress={() => addGlyph("emoji", emoji)}
+                >
                   <Text variant="title1">{emoji}</Text>
                 </Pressable>
               ))}
@@ -516,7 +712,9 @@ export default function EditImage() {
                   <Pressable
                     key={sticker.id}
                     accessibilityLabel={sticker.name}
-                    onPress={() => addGlyph("image", getStickerUri(sticker.path))}
+                    onPress={() =>
+                      addGlyph("image", getStickerUri(sticker.path))
+                    }
                   >
                     <Image
                       source={{ uri: getStickerUri(sticker.path) }}
@@ -533,14 +731,23 @@ export default function EditImage() {
         {!focused && tool === "frame" && (
           <HStack gap="md" justify="center">
             {FRAMES.map((frame) => (
-              <Pressable key={frame.key} onPress={() => store.set({ frame: frame.key })}>
+              <Pressable
+                key={frame.key}
+                onPress={() => store.set({ frame: frame.key })}
+              >
                 <Box
                   px="xl"
                   py="sm"
                   radius="full"
-                  bg={state.frame === frame.key ? "systemBlue" : "secondarySystemGroupedBackground"}
+                  bg={
+                    state.frame === frame.key
+                      ? "systemBlue"
+                      : "secondarySystemGroupedBackground"
+                  }
                 >
-                  <Text color={state.frame === frame.key ? "onTint" : "label"}>{frame.label}</Text>
+                  <Text color={state.frame === frame.key ? "onTint" : "label"}>
+                    {frame.label}
+                  </Text>
                 </Box>
               </Pressable>
             ))}
@@ -548,37 +755,50 @@ export default function EditImage() {
         )}
 
         {!focused && (
-        <Box row style={{ flexWrap: "wrap", paddingHorizontal: 16, gap: 8 }}>
-          {TOOLS.map(({ key, label, icon }) => {
-            const active = tool === key;
-            return (
-              <Pressable
-                key={key}
-                accessibilityRole="button"
-                accessibilityState={{ selected: active }}
-                onPress={() => {
-                  Keyboard.dismiss();
-                  store.set({ tool: active ? null : key, selectedId: active ? state.selectedId : null });
-                }}
-                style={{ width: "31.5%" }}
-              >
-                <Box
-                  center
-                  gap="xs"
-                  py="md"
-                  radius="md"
-                  bg="secondarySystemGroupedBackground"
-                  style={{ borderWidth: 1.5, borderColor: active ? theme.systemBlue : "transparent" }}
+          <Box row style={{ flexWrap: "wrap", paddingHorizontal: 16, gap: 8 }}>
+            {TOOLS.map(({ key, label, icon }) => {
+              const active = tool === key;
+              return (
+                <Pressable
+                  key={key}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    store.set({
+                      tool: active ? null : key,
+                      selectedId: active ? state.selectedId : null,
+                    });
+                  }}
+                  style={{ width: "31.5%" }}
                 >
-                  <Icon icon={icon} size={22} color={active ? "systemBlue" : "label"} />
-                  <Text variant="footnote" color={active ? "systemBlue" : "label"}>
-                    {label}
-                  </Text>
-                </Box>
-              </Pressable>
-            );
-          })}
-        </Box>
+                  <Box
+                    center
+                    gap="xs"
+                    py="md"
+                    radius="md"
+                    bg="secondarySystemGroupedBackground"
+                    style={{
+                      borderWidth: 1.5,
+                      borderColor: active ? theme.systemBlue : "transparent",
+                    }}
+                  >
+                    <Icon
+                      icon={icon}
+                      size={22}
+                      color={active ? "systemBlue" : "label"}
+                    />
+                    <Text
+                      variant="footnote"
+                      color={active ? "systemBlue" : "label"}
+                    >
+                      {label}
+                    </Text>
+                  </Box>
+                </Pressable>
+              );
+            })}
+          </Box>
         )}
       </ScrollView>
     </Screen>

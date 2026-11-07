@@ -43,7 +43,11 @@ export function LockScreen({ title, onUnlock, onCancel }: Props) {
   const check = async (pin: string) => {
     const result = await verifyPin(pin);
     if (result === "ok") return onUnlock();
-    setError(result === "locked" ? "Too many attempts. Try again in 30 seconds." : "Wrong PIN. Try again.");
+    setError(
+      result === "locked"
+        ? "Too many attempts. Try again in 30 seconds."
+        : "Wrong PIN. Try again.",
+    );
   };
 
   return (
@@ -59,7 +63,11 @@ export function LockScreen({ title, onUnlock, onCancel }: Props) {
             <Pressable
               accessibilityLabel="Unlock with Face ID"
               onPress={tryBiometrics}
-              style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+              style={{
+                flex: 1,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
             >
               <Icon icon={ScanFace} size={30} color="systemBlue" />
             </Pressable>

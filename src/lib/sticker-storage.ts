@@ -27,10 +27,6 @@ export function getStickerUri(path: string): string {
   return new File(Paths.document, path).uri;
 }
 
-export function stickerImageExists(path: string): boolean {
-  return new File(Paths.document, path).exists;
-}
-
 /** Deletes the stored image; does nothing if the file is already gone. */
 export function deleteStickerImage(path: string): void {
   const file = new File(Paths.document, path);

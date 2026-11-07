@@ -13,8 +13,7 @@ export type StickerLocation = {
 const DEFAULT_RADIUS_METERS = 100;
 
 export type LocationResult =
-  | { status: "granted"; location: StickerLocation }
-  | { status: "denied" };
+  { status: "granted"; location: StickerLocation } | { status: "denied" };
 
 /** Reads the current position and resolves a readable place name for it. */
 export async function getCurrentStickerLocation(): Promise<LocationResult> {
@@ -54,7 +53,8 @@ export async function describePoint(
 }
 
 // Open Location Code ("8FVC9G8F+6W"): the geocoder falls back to it when a spot has no name.
-const PLUS_CODE = /^[23456789CFGHJMPQRVWX]{2,8}\+[23456789CFGHJMPQRVWX]*(\s|$)/i;
+const PLUS_CODE =
+  /^[23456789CFGHJMPQRVWX]{2,8}\+[23456789CFGHJMPQRVWX]*(\s|$)/i;
 // A house number or other digits on their own.
 const BARE_NUMBER = /^[\d\s\-/]+$/;
 
@@ -65,11 +65,18 @@ export function isPlaceCode(text: string | null | undefined) {
 }
 
 /** The readable name, street, area and country of a geocoder result: codes and bare numbers are skipped. */
-export function placeParts(place: Location.LocationGeocodedAddress | undefined) {
-  const name = [place?.name, place?.street, place?.district].find((part) => !isPlaceCode(part));
-  const locality = [place?.city, place?.subregion, place?.district, place?.region].find(
-    (part) => !isPlaceCode(part) && part !== name,
+export function placeParts(
+  place: Location.LocationGeocodedAddress | undefined,
+) {
+  const name = [place?.name, place?.street, place?.district].find(
+    (part) => !isPlaceCode(part),
   );
+  const locality = [
+    place?.city,
+    place?.subregion,
+    place?.district,
+    place?.region,
+  ].find((part) => !isPlaceCode(part) && part !== name);
   return {
     placeName: name ?? null,
     locality: locality ?? null,

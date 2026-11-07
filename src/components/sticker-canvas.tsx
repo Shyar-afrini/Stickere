@@ -22,12 +22,22 @@ import { File } from "expo-file-system";
 import type { ReactNode, RefObject } from "react";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { Keyboard, PanResponder, Platform, View } from "react-native";
-import Animated, { useAnimatedStyle, useDerivedValue, useSharedValue, type SharedValue } from "react-native-reanimated";
+import Animated, {
+  useAnimatedStyle,
+  useDerivedValue,
+  useSharedValue,
+  type SharedValue,
+} from "react-native-reanimated";
 import Svg, { Defs, Pattern, Rect } from "react-native-svg";
 
 import { Spinner, Text } from "@/components/ui";
 import { useTheme } from "@/hooks/use-theme";
-import type { EditorState, Layer, StickerEditorStore, Stroke } from "@/lib/sticker-editor-store";
+import type {
+  EditorState,
+  Layer,
+  StickerEditorStore,
+  Stroke,
+} from "@/lib/sticker-editor-store";
 
 const TEXT_SIZE = 48;
 const EMOJI_SIZE = 56;
@@ -49,7 +59,10 @@ const emptyPath = Skia.Path.Make();
 type Frame = { x: number; y: number; width: number; height: number };
 
 /** Where the photo sits inside the square canvas. */
-export function baseRect(side: number, state: Pick<EditorState, "baseWidth" | "baseHeight">): Frame {
+export function baseRect(
+  side: number,
+  state: Pick<EditorState, "baseWidth" | "baseHeight">,
+): Frame {
   // On a small canvas the margin shrinks too, so the photo never ends up with no room at all.
   const room = side - Math.min(PADDING, side * 0.1) * 2;
   const scale = Math.min(room / state.baseWidth, room / state.baseHeight);
@@ -71,7 +84,12 @@ export function exportRect(side: number, state: EditorState): Frame {
   }
   if (state.frame !== "circle") return base;
   const size = Math.min(base.width, base.height);
-  return { x: base.x + (base.width - size) / 2, y: base.y + (base.height - size) / 2, width: size, height: size };
+  return {
+    x: base.x + (base.width - size) / 2,
+    y: base.y + (base.height - size) / 2,
+    width: size,
+    height: size,
+  };
 }
 
 function strokePath(stroke: Stroke) {
@@ -79,13 +97,17 @@ function strokePath(stroke: Stroke) {
   builder.moveTo(stroke.points[0].x, stroke.points[0].y);
   stroke.points.slice(1).forEach((point) => builder.lineTo(point.x, point.y));
   // A single tap still leaves a dot because the cap is round.
-  if (stroke.points.length === 1) builder.lineTo(stroke.points[0].x + 0.01, stroke.points[0].y);
+  if (stroke.points.length === 1)
+    builder.lineTo(stroke.points[0].x + 0.01, stroke.points[0].y);
   return builder.build();
 }
 
 /** Decodes a local file ourselves, so odd URIs (spaces, encoding) can't stop the photo from loading. */
 function useLocalImage(uri: string) {
-  const [result, setResult] = useState<{ uri: string; image: SkImage | null } | null>(null);
+  const [result, setResult] = useState<{
+    uri: string;
+    image: SkImage | null;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -111,10 +133,22 @@ function useLocalImage(uri: string) {
   };
 }
 
-type Drag = { id: SharedValue<number>; x: SharedValue<number>; y: SharedValue<number> };
+type Drag = {
+  id: SharedValue<number>;
+  x: SharedValue<number>;
+  y: SharedValue<number>;
+};
 
 /** Places a layer; the one being dragged follows the finger on the UI thread, without re-rendering. */
-function LayerGroup({ op, drag, children }: { op: Layer; drag: Drag; children: ReactNode }) {
+function LayerGroup({
+  op,
+  drag,
+  children,
+}: {
+  op: Layer;
+  drag: Drag;
+  children: ReactNode;
+}) {
   const transform = useDerivedValue(() => {
     const moving = drag.id.value === op.id;
     return [
@@ -128,7 +162,15 @@ function LayerGroup({ op, drag, children }: { op: Layer; drag: Drag; children: R
 }
 
 /** The shape of its children grown by `width` and painted in one colour. */
-function Silhouette({ color, width, children }: { color: string; width: number; children: ReactNode }) {
+function Silhouette({
+  color,
+  width,
+  children,
+}: {
+  color: string;
+  width: number;
+  children: ReactNode;
+}) {
   return (
     <Group
       layer={
@@ -173,8 +215,19 @@ function ImageLayer({ layer }: { layer: Layer }) {
   const width = ratio >= 1 ? IMAGE_BOX : IMAGE_BOX * ratio;
   const height = ratio >= 1 ? IMAGE_BOX / ratio : IMAGE_BOX;
   return (
-    <Outlined on={layer.outline} color={layer.outlineColor} width={layer.outlineWidth}>
-      <SkiaImage image={image} x={-width / 2} y={-height / 2} width={width} height={height} fit="fill" />
+    <Outlined
+      on={layer.outline}
+      color={layer.outlineColor}
+      width={layer.outlineWidth}
+    >
+      <SkiaImage
+        image={image}
+        x={-width / 2}
+        y={-height / 2}
+        width={width}
+        height={height}
+        fit="fill"
+      />
     </Outlined>
   );
 }
@@ -182,7 +235,9 @@ function ImageLayer({ layer }: { layer: Layer }) {
 /** Colour matrix that paints everything in one colour and keeps the alpha. */
 function solidMatrix(hex: string) {
   const value = parseInt(hex.replace("#", "").slice(0, 6), 16);
-  const [r, g, b] = [(value >> 16) & 255, (value >> 8) & 255, value & 255].map((part) => part / 255);
+  const [r, g, b] = [(value >> 16) & 255, (value >> 8) & 255, value & 255].map(
+    (part) => part / 255,
+  );
   return [0, 0, 0, 0, r, 0, 0, 0, 0, g, 0, 0, 0, 0, b, 0, 0, 0, 1, 0];
 }
 
@@ -198,7 +253,9 @@ function GlyphLayer({ layer }: { layer: Layer }) {
     const emoji = layer.type === "emoji";
     const builder = Skia.ParagraphBuilder.Make({
       textAlign: TextAlign.Center,
-      textDirection: RIGHT_TO_LEFT.test(layer.value) ? TextDirection.RTL : TextDirection.LTR,
+      textDirection: RIGHT_TO_LEFT.test(layer.value)
+        ? TextDirection.RTL
+        : TextDirection.LTR,
     });
     builder
       .pushStyle({
@@ -218,8 +275,17 @@ function GlyphLayer({ layer }: { layer: Layer }) {
   }, [layer.value, layer.color, layer.type, layer.bold]);
 
   return (
-    <Outlined on={layer.type === "text" && layer.outline} color={layer.outlineColor} width={layer.outlineWidth}>
-      <Paragraph paragraph={paragraph} x={-GLYPH_WIDTH / 2} y={-paragraph.getHeight() / 2} width={GLYPH_WIDTH} />
+    <Outlined
+      on={layer.type === "text" && layer.outline}
+      color={layer.outlineColor}
+      width={layer.outlineWidth}
+    >
+      <Paragraph
+        paragraph={paragraph}
+        x={-GLYPH_WIDTH / 2}
+        y={-paragraph.getHeight() / 2}
+        width={GLYPH_WIDTH}
+      />
     </Outlined>
   );
 }
@@ -245,7 +311,11 @@ export function StickerCanvas({ store, side, canvasRef }: Props) {
   const touchX = useSharedValue(0);
   const touchY = useSharedValue(0);
   const loupeOn = useSharedValue(0);
-  const drag: Drag = { id: useSharedValue(-1), x: useSharedValue(0), y: useSharedValue(0) };
+  const drag: Drag = {
+    id: useSharedValue(-1),
+    x: useSharedValue(0),
+    y: useSharedValue(0),
+  };
 
   const [responder] = useState(() => {
     const finish = (dx: number, dy: number) => {
@@ -290,7 +360,7 @@ export function StickerCanvas({ store, side, canvasRef }: Props) {
           return;
         }
         const { locationX, locationY } = event.nativeEvent;
-        store.touchMove(locationX, locationY, gesture.dx, gesture.dy);
+        store.touchMove(locationX, locationY);
         if (store.activeStroke) {
           touchX.set(locationX);
           touchY.set(locationY);
@@ -319,16 +389,30 @@ export function StickerCanvas({ store, side, canvasRef }: Props) {
 
   // Fall back to the decoded size if the dimensions passed along were missing.
   const known = state.baseWidth > 0 && state.baseHeight > 0;
-  const base = baseRect(side, known || !image ? state : { baseWidth: image.width(), baseHeight: image.height() });
+  const base = baseRect(
+    side,
+    known || !image
+      ? state
+      : { baseWidth: image.width(), baseHeight: image.height() },
+  );
   const clip = useMemo(() => {
     if (state.frame === "none") return undefined;
     const area = exportRect(side, state);
-    const radius = state.frame === "circle" ? area.width / 2 : Math.min(area.width, area.height) * 0.14;
-    return rrect(skRect(area.x, area.y, area.width, area.height), radius, radius);
+    const radius =
+      state.frame === "circle"
+        ? area.width / 2
+        : Math.min(area.width, area.height) * 0.14;
+    return rrect(
+      skRect(area.x, area.y, area.width, area.height),
+      radius,
+      radius,
+    );
   }, [side, state]);
 
   // A separate layer is only needed for the eraser, which clears pixels instead of painting.
-  const layered = state.tool === "eraser" || state.ops.some((op) => op.kind === "stroke" && op.erase);
+  const layered =
+    state.tool === "eraser" ||
+    state.ops.some((op) => op.kind === "stroke" && op.erase);
   const drawing = state.tool === "paint" || state.tool === "eraser";
 
   const selected = store.selected();
@@ -345,7 +429,12 @@ export function StickerCanvas({ store, side, canvasRef }: Props) {
   const loupeCy = useDerivedValue(() => loupeCenter.value.y);
   const loupeClip = useDerivedValue(() =>
     rrect(
-      skRect(loupeCenter.value.x - LOUPE_RADIUS, loupeCenter.value.y - LOUPE_RADIUS, LOUPE_RADIUS * 2, LOUPE_RADIUS * 2),
+      skRect(
+        loupeCenter.value.x - LOUPE_RADIUS,
+        loupeCenter.value.y - LOUPE_RADIUS,
+        LOUPE_RADIUS * 2,
+        LOUPE_RADIUS * 2,
+      ),
       LOUPE_RADIUS,
       LOUPE_RADIUS,
     ),
@@ -360,7 +449,14 @@ export function StickerCanvas({ store, side, canvasRef }: Props) {
 
   const content = (
     <Group layer={layered} clip={clip}>
-      <SkiaImage image={image} x={base.x} y={base.y} width={base.width} height={base.height} fit="fill" />
+      <SkiaImage
+        image={image}
+        x={base.x}
+        y={base.y}
+        width={base.width}
+        height={base.height}
+        fit="fill"
+      />
       {state.ops.map((op) =>
         op.kind === "stroke" ? (
           <Path
@@ -403,7 +499,14 @@ export function StickerCanvas({ store, side, canvasRef }: Props) {
     state.outline && state.frame === "none" ? (
       <>
         <Silhouette color={state.outlineColor} width={state.outlineWidth}>
-          <SkiaImage image={image} x={base.x} y={base.y} width={base.width} height={base.height} fit="fill" />
+          <SkiaImage
+            image={image}
+            x={base.x}
+            y={base.y}
+            width={base.width}
+            height={base.height}
+            fit="fill"
+          />
           {state.ops.map((op) =>
             op.kind === "stroke" && op.erase ? (
               <Path
@@ -440,19 +543,36 @@ export function StickerCanvas({ store, side, canvasRef }: Props) {
     <View style={{ width: side, height: side }} {...responder.panHandlers}>
       <Svg width={side} height={side} style={{ position: "absolute" }}>
         <Defs>
-          <Pattern id="checker" width={CHECK * 2} height={CHECK * 2} patternUnits="userSpaceOnUse">
+          <Pattern
+            id="checker"
+            width={CHECK * 2}
+            height={CHECK * 2}
+            patternUnits="userSpaceOnUse"
+          >
             <Rect width={CHECK * 2} height={CHECK * 2} fill={checkLight} />
             <Rect width={CHECK} height={CHECK} fill={checkDark} />
-            <Rect x={CHECK} y={CHECK} width={CHECK} height={CHECK} fill={checkDark} />
+            <Rect
+              x={CHECK}
+              y={CHECK}
+              width={CHECK}
+              height={CHECK}
+              fill={checkDark}
+            />
           </Pattern>
         </Defs>
         <Rect width={side} height={side} fill="url(#checker)" />
       </Svg>
 
       {!image ? (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+        <View
+          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+        >
           {failed ? (
-            <Text variant="footnote" color="secondaryLabel" style={{ textAlign: "center", padding: 24 }}>
+            <Text
+              variant="footnote"
+              color="secondaryLabel"
+              style={{ textAlign: "center", padding: 24 }}
+            >
               This photo couldn’t be opened. Try another one.
             </Text>
           ) : (
@@ -465,7 +585,12 @@ export function StickerCanvas({ store, side, canvasRef }: Props) {
           {drawing && (
             <Group opacity={loupeOn}>
               <Group clip={loupeClip}>
-                <Circle cx={loupeCx} cy={loupeCy} r={LOUPE_RADIUS} color={checkLight} />
+                <Circle
+                  cx={loupeCx}
+                  cy={loupeCy}
+                  r={LOUPE_RADIUS}
+                  color={checkLight}
+                />
                 <Group transform={loupeZoom}>{scene}</Group>
                 <Circle
                   cx={loupeCx}
@@ -476,7 +601,14 @@ export function StickerCanvas({ store, side, canvasRef }: Props) {
                   color={theme.systemBlue}
                 />
               </Group>
-              <Circle cx={loupeCx} cy={loupeCy} r={LOUPE_RADIUS} style="stroke" strokeWidth={3} color="#FFFFFF" />
+              <Circle
+                cx={loupeCx}
+                cy={loupeCy}
+                r={LOUPE_RADIUS}
+                style="stroke"
+                strokeWidth={3}
+                color="#FFFFFF"
+              />
             </Group>
           )}
         </Canvas>

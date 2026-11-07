@@ -3,16 +3,25 @@ import { useCallback, useState } from "react";
 
 import { LockModal } from "@/components/lock-screen";
 import { BIOMETRIC_LABEL } from "@/lib/platform";
-import { ListRow, ListSection, Screen, ScrollView, Toggle } from "@/components/ui";
+import {
+  ListRow,
+  ListSection,
+  Screen,
+  ScrollView,
+  Toggle,
+} from "@/components/ui";
 import { setPackLocked } from "@/db/mutations";
 import { usePacks } from "@/hooks/use-packs";
 import { Spacing } from "@/constants/theme";
 import { useHeaderInset } from "@/hooks/use-header-inset";
 import { useTabBarInset } from "@/hooks/use-tab-bar-inset";
 import { relockPack, unlockPack, useLockState } from "@/lib/lock-state";
-import { authenticateWithBiometrics, biometricsAvailable, hasPin } from "@/lib/security";
+import {
+  authenticateWithBiometrics,
+  biometricsAvailable,
+  hasPin,
+} from "@/lib/security";
 import { getAppLock, getFaceId, setAppLock, setFaceId } from "@/lib/settings";
-
 
 export default function Settings() {
   const router = useRouter();
@@ -26,7 +35,10 @@ export default function Settings() {
   const [faceId, setFaceIdState] = useState(getFaceId);
   const [canUseBiometrics, setCanUseBiometrics] = useState(false);
   // Pack waiting for its PIN / Face ID before the lock can be removed.
-  const [unlocking, setUnlocking] = useState<{ id: number; name: string } | null>(null);
+  const [unlocking, setUnlocking] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
 
   // Coming back from the PIN screen may have saved a PIN and switched a lock on.
   useFocusEffect(
@@ -37,8 +49,9 @@ export default function Settings() {
     }, []),
   );
 
-  const askForPin = (params: { enable?: "app" | "pack"; packId?: number } = {}) =>
-    router.push({ pathname: "/(pages)/(packs)/pin", params });
+  const askForPin = (
+    params: { enable?: "app" | "pack"; packId?: number } = {},
+  ) => router.push({ pathname: "/(pages)/(packs)/pin", params });
 
   const toggleAppLock = (enabled: boolean) => {
     if (enabled && !pinSet) return askForPin({ enable: "app" });
@@ -47,12 +60,19 @@ export default function Settings() {
   };
 
   const toggleFaceId = async (enabled: boolean) => {
-    if (enabled && !(await authenticateWithBiometrics(`Turn on ${BIOMETRIC_LABEL}`))) return;
+    if (
+      enabled &&
+      !(await authenticateWithBiometrics(`Turn on ${BIOMETRIC_LABEL}`))
+    )
+      return;
     setFaceId(enabled);
     setFaceIdState(enabled);
   };
 
-  const togglePack = (pack: { id: number; name: string; isLocked: boolean }, enabled: boolean) => {
+  const togglePack = (
+    pack: { id: number; name: string; isLocked: boolean },
+    enabled: boolean,
+  ) => {
     if (enabled) {
       if (!pinSet) return askForPin({ enable: "pack", packId: pack.id });
       relockPack(pack.id);
@@ -65,7 +85,14 @@ export default function Settings() {
 
   return (
     <Screen>
-      <ScrollView gap="xl" py="lg" contentContainerStyle={{ paddingTop: headerInset + Spacing.sm, paddingBottom: tabInset }}>
+      <ScrollView
+        gap="xl"
+        py="lg"
+        contentContainerStyle={{
+          paddingTop: headerInset + Spacing.sm,
+          paddingBottom: tabInset,
+        }}
+      >
         <ListSection
           title="App Lock"
           footer="Locks Stickerê each time you open it or come back to it."

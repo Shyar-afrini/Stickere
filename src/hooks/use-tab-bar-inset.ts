@@ -1,4 +1,7 @@
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  initialWindowMetrics,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 /** Height of the floating tab bar pill. */
 export const TAB_BAR_HEIGHT = 68;
@@ -12,5 +15,13 @@ export const TAB_BAR_GAP = 12;
 /** Space a screen must leave at the bottom so content clears the floating tab bar. */
 export function useTabBarInset() {
   const insets = useSafeAreaInsets();
-  return insets.bottom + TAB_BAR_HEIGHT + TAB_BAR_MARGIN;
+  // A screen that has just been pushed (a sheet route) can report no inset on its first frame, which would
+  // start its sheet lower than the others; the window's own inset is known from the start.
+  const bottom = insets.bottom || initialWindowMetrics?.insets.bottom || 0;
+  return bottom + TAB_BAR_HEIGHT + TAB_BAR_MARGIN;
+}
+
+/** Where every drawer sheet rests: on top of the tab bar's spot, like the map's drawer. */
+export function useSheetBottom() {
+  return useTabBarInset() + 8;
 }

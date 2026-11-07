@@ -9,10 +9,18 @@ import { Text } from "./text";
  * Title bar drawn inside a sheet: a sheet has no navigation bar on Android, so both platforms use this
  * one. Cancel-style action on the left, the title in the middle, the confirm action on the right.
  */
-export function SheetHeader({ title, left, right }: { title: string; left?: ReactNode; right?: ReactNode }) {
+export function SheetHeader({
+  title,
+  left,
+  right,
+}: {
+  title: string;
+  left?: ReactNode;
+  right?: ReactNode;
+}) {
   return (
-    // Top padding leaves room between the sheet's grab handle and the title.
-    <Box row align="center" px="md" pb="md" style={{ paddingTop: Spacing.xxl }}>
+    // The sheet draws its own grab handle above this.
+    <Box row align="center" px="md" pb="md" style={{ paddingTop: Spacing.sm }}>
       <Box flex={1} align="flex-start">
         {left}
       </Box>

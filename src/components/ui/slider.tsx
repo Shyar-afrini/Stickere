@@ -14,8 +14,14 @@ type SliderProps = {
   accessibilityLabel?: string;
 };
 
-/** Fallback slider for web, drawn by hand. iOS and Android use their native sliders (`slider.ios.tsx`, `slider.android.tsx`). */
-export function Slider({ value, min, max, onChange, accessibilityLabel }: SliderProps) {
+/** The app's own slider, drawn the same on both platforms in the iOS style: thin track, round white knob. */
+export function Slider({
+  value,
+  min,
+  max,
+  onChange,
+  accessibilityLabel,
+}: SliderProps) {
   const theme = useTheme();
   const [width, setWidth] = useState(0);
 
@@ -41,7 +47,14 @@ export function Slider({ value, min, max, onChange, accessibilityLabel }: Slider
       style={{ height: 44, justifyContent: "center" }}
     >
       {/* Children ignore touches so `locationX` is always relative to the whole track. */}
-      <View pointerEvents="none" style={{ height: TRACK, borderRadius: TRACK / 2, backgroundColor: theme.systemFill }}>
+      <View
+        pointerEvents="none"
+        style={{
+          height: TRACK,
+          borderRadius: TRACK / 2,
+          backgroundColor: theme.systemFill,
+        }}
+      >
         <View
           style={{
             width: fraction * travel + KNOB / 2,

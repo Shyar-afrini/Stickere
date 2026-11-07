@@ -10,7 +10,10 @@ type Snapshot = { appLocked: boolean; unlockedPacks: ReadonlySet<number> };
 // background locks the app and all packs again.
 const appLockEnabled = () => getAppLock() && hasPin();
 
-let snapshot: Snapshot = { appLocked: appLockEnabled(), unlockedPacks: new Set() };
+let snapshot: Snapshot = {
+  appLocked: appLockEnabled(),
+  unlockedPacks: new Set(),
+};
 const listeners = new Set<() => void>();
 
 function update(next: Snapshot) {
@@ -27,7 +30,10 @@ AppState.addEventListener("change", (state) => {
 export const unlockApp = () => update({ ...snapshot, appLocked: false });
 
 export const unlockPack = (id: number) =>
-  update({ ...snapshot, unlockedPacks: new Set(snapshot.unlockedPacks).add(id) });
+  update({
+    ...snapshot,
+    unlockedPacks: new Set(snapshot.unlockedPacks).add(id),
+  });
 
 export function relockPack(id: number) {
   const next = new Set(snapshot.unlockedPacks);

@@ -49,7 +49,10 @@ export function PinPad({ title, subtitle, error, onComplete, corner }: Props) {
         <Text variant="title3" weight="bold">
           {title}
         </Text>
-        <Text variant="subheadline" color={error ? "systemRed" : "secondaryLabel"}>
+        <Text
+          variant="subheadline"
+          color={error ? "systemRed" : "secondaryLabel"}
+        >
           {error ?? subtitle ?? " "}
         </Text>
       </Box>
@@ -64,7 +67,8 @@ export function PinPad({ title, subtitle, error, onComplete, corner }: Props) {
               borderRadius: 7,
               borderWidth: 1.5,
               borderColor: theme.label,
-              backgroundColor: index < digits.length ? theme.label : "transparent",
+              backgroundColor:
+                index < digits.length ? theme.label : "transparent",
             }}
           />
         ))}
@@ -87,14 +91,20 @@ export function PinPad({ title, subtitle, error, onComplete, corner }: Props) {
                   key={key}
                   accessibilityRole="button"
                   accessibilityLabel={isDelete ? "Delete" : key}
-                  onPress={() => (isDelete ? setDigits((value) => value.slice(0, -1)) : press(key))}
+                  onPress={() =>
+                    isDelete
+                      ? setDigits((value) => value.slice(0, -1))
+                      : press(key)
+                  }
                   style={{
                     width: KEY,
                     height: KEY,
                     borderRadius: KEY / 2,
                     alignItems: "center",
                     justifyContent: "center",
-                    backgroundColor: isDelete ? "transparent" : theme.systemFill,
+                    backgroundColor: isDelete
+                      ? "transparent"
+                      : theme.systemFill,
                   }}
                 >
                   {isDelete ? (

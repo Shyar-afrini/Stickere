@@ -28,7 +28,13 @@ type UpdatePackInput = {
   coverPath: string | null;
 };
 
-export function updatePack({ id, name, author, description, coverPath }: UpdatePackInput) {
+export function updatePack({
+  id,
+  name,
+  author,
+  description,
+  coverPath,
+}: UpdatePackInput) {
   db.update(packs)
     .set({
       name: name.trim(),
@@ -48,9 +54,17 @@ type NewPackInput = {
   coverPath?: string | null;
 };
 
-export function createPack({ name, author, description, coverPath }: NewPackInput) {
+export function createPack({
+  name,
+  author,
+  description,
+  coverPath,
+}: NewPackInput) {
   // New packs go to the end; the order only changes when the user reorders.
-  const last = db.select({ position: max(packs.position) }).from(packs).get();
+  const last = db
+    .select({ position: max(packs.position) })
+    .from(packs)
+    .get();
 
   return db
     .insert(packs)
@@ -75,6 +89,8 @@ type NewStickerInput = {
   mimeType: string;
   emojis?: string[];
   tags?: string[];
+  /** Caption or story about the memory behind the sticker. */
+  story?: string;
   location?: StickerLocation;
   /** Library photo this sticker was made from, so it is not suggested again. */
   sourceAssetId?: string;
@@ -102,6 +118,7 @@ export async function createSticker(input: NewStickerInput) {
           width: input.width,
           height: input.height,
           emojis: input.emojis ?? [],
+          story: input.story?.trim() || null,
           isAnimated: input.mimeType === "image/gif",
           position: (last?.position ?? -1) + 1,
           ...input.location,
@@ -129,16 +146,28 @@ type UpdateStickerInput = {
   name: string;
   emojis: string[];
   tags: string[];
+  story: string;
   location: StickerLocation | null;
   /** Set when the image was edited; replaces the stored file. */
-  image?: { sourceUri: string; width: number; height: number; mimeType: string };
+  image?: {
+    sourceUri: string;
+    width: number;
+    height: number;
+    mimeType: string;
+  };
 };
 
 export async function updateSticker(input: UpdateStickerInput) {
-  const current = db.select().from(stickers).where(eq(stickers.id, input.id)).get();
+  const current = db
+    .select()
+    .from(stickers)
+    .where(eq(stickers.id, input.id))
+    .get();
   if (!current) throw new Error("This sticker no longer exists.");
 
-  const path = input.image ? await saveStickerImage(input.image.sourceUri) : current.path;
+  const path = input.image
+    ? await saveStickerImage(input.image.sourceUri)
+    : current.path;
 
   try {
     db.transaction((tx) => {
@@ -157,6 +186,7 @@ export async function updateSticker(input: UpdateStickerInput) {
           packId: input.packId,
           name: input.name.trim(),
           emojis: input.emojis,
+          story: input.story.trim() || null,
           path,
           position,
           ...(input.image && {
@@ -238,7 +268,11 @@ export function deleteSticker(
 
 /** Deletes a pack together with its stickers and their image files. */
 export function deletePack(packId: number) {
-  const cover = db.select({ path: packs.coverPath }).from(packs).where(eq(packs.id, packId)).get();
+  const cover = db
+    .select({ path: packs.coverPath })
+    .from(packs)
+    .where(eq(packs.id, packId))
+    .get();
   const owned = db
     .select({ id: stickers.id, path: stickers.path })
     .from(stickers)
@@ -287,7 +321,11 @@ function setStickerTags(tx: Tx, stickerId: number, names: string[]) {
     .values(wanted.map((name) => ({ name })))
     .onConflictDoNothing()
     .run();
-  const rows = tx.select({ id: tags.id }).from(tags).where(inArray(tags.name, wanted)).all();
+  const rows = tx
+    .select({ id: tags.id })
+    .from(tags)
+    .where(inArray(tags.name, wanted))
+    .all();
   tx.insert(stickerTags)
     .values(rows.map((row) => ({ stickerId, tagId: row.id })))
     .run();

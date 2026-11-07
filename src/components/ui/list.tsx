@@ -7,6 +7,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { Box } from "./box";
 import { Icon } from "./icon";
 import { Pressable } from "./pressable";
+import { Spinner } from "./spinner";
 import { Text } from "./text";
 
 /** iOS inset-grouped section: rounded surface with hairline separators. */
@@ -75,6 +76,8 @@ type ListRowProps = {
   accessory?: "checkmark";
   /** Custom trailing content, such as a `Toggle`. */
   trailing?: ReactNode;
+  /** Swaps the trailing content for a spinner and ignores taps until the action is done. */
+  loading?: boolean;
   onPress?: () => void;
 };
 
@@ -84,6 +87,7 @@ export function ListRow({
   tinted,
   accessory,
   trailing,
+  loading = false,
   onPress,
 }: ListRowProps) {
   const content = (
@@ -106,14 +110,18 @@ export function ListRow({
       {accessory === "checkmark" && (
         <Icon icon={Check} size={16} color="systemBlue" strokeWidth={2.5} />
       )}
-      {trailing}
+      {loading ? <Spinner /> : trailing}
     </Box>
   );
 
   if (!onPress) return content;
 
   return (
-    <Pressable accessibilityRole="button" onPress={onPress}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ busy: loading }}
+      onPress={loading ? undefined : onPress}
+    >
       {content}
     </Pressable>
   );

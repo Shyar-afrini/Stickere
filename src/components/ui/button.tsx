@@ -73,9 +73,17 @@ export function Button({
       ]}
       {...props}
     >
-      {loading ? <Spinner /> : icon && <Icon icon={icon} size={18} color={textColor} />}
+      {loading ? (
+        <Spinner />
+      ) : (
+        icon && <Icon icon={icon} size={18} color={textColor} />
+      )}
       {title && (
-        <Text variant="body" weight={filled ? "semibold" : undefined} color={textColor}>
+        <Text
+          variant="body"
+          weight={filled ? "semibold" : undefined}
+          color={textColor}
+        >
           {title}
         </Text>
       )}

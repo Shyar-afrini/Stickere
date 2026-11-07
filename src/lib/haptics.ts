@@ -19,7 +19,9 @@ export const Haptic = {
   /** Moving between options: tabs, segments, picker values. */
   selection: () =>
     run((h) =>
-      android ? h.performAndroidHapticsAsync(h.AndroidHaptics.Segment_Tick) : h.selectionAsync(),
+      android
+        ? h.performAndroidHapticsAsync(h.AndroidHaptics.Segment_Tick)
+        : h.selectionAsync(),
     ),
   /** A press that opens or starts something: the Add button, the menu. */
   tap: () =>

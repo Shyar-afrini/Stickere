@@ -42,7 +42,8 @@ export function Grid<T>({
   scrollEnabled = true,
 }: Props<T>) {
   const [width, setWidth] = useState(0);
-  const cellWidth = (width - 2 * Spacing[inset] - (columns - 1) * Spacing[gap]) / columns;
+  const cellWidth =
+    (width - 2 * Spacing[inset] - (columns - 1) * Spacing[gap]) / columns;
 
   return (
     <ScrollView

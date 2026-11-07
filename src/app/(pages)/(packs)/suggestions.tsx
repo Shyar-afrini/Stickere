@@ -1,7 +1,13 @@
+import { useState } from "react";
 import { Spacing } from "@/constants/theme";
 import { useHeaderInset } from "@/hooks/use-header-inset";
 import { useTabBarInset } from "@/hooks/use-tab-bar-inset";
-import { ImagePlus, Images, Map as MapIcon, TriangleAlert } from "lucide-react-native";
+import {
+  ImagePlus,
+  Images,
+  Map as MapIcon,
+  TriangleAlert,
+} from "lucide-react-native";
 import { Stack, useRouter } from "expo-router";
 
 import {
@@ -15,7 +21,7 @@ import {
   Spinner,
   Text,
   VStack,
-  showAlert,
+  showToast,
 } from "@/components/ui";
 import { dismissAsset } from "@/db/mutations";
 import { usePhotoSuggestions } from "@/hooks/use-photo-suggestions";
@@ -44,6 +50,7 @@ export default function Suggestions() {
   const tabInset = useTabBarInset();
   const headerInset = useHeaderInset();
   const router = useRouter();
+  const [choosing, setChoosing] = useState(false);
   const { access, trips, isLoading, error, reload, removePhoto } =
     usePhotoSuggestions();
 
@@ -68,25 +75,19 @@ export default function Suggestions() {
         },
       });
     } catch {
-      showAlert(
+      showToast(
         "Couldn’t Open Photo",
         "The photo may still be in iCloud. Try again in a moment.",
       );
     }
   };
 
-  const dismiss = (photo: TripPhoto) =>
-    showAlert("Hide this photo?", "It won’t be suggested again.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Hide",
-        style: "destructive",
-        onPress: () => {
-          dismissAsset(photo.id);
-          removePhoto(photo.id);
-        },
-      },
-    ]);
+  // Hidden straight away (no question): a toast says so.
+  const dismiss = (photo: TripPhoto) => {
+    dismissAsset(photo.id);
+    removePhoto(photo.id);
+    showToast("Photo hidden", "It won’t be suggested again.");
+  };
 
   let content;
   if (access === "denied") {
@@ -126,7 +127,14 @@ export default function Suggestions() {
     );
   } else {
     content = (
-      <ScrollView gap="xl" py="lg" contentContainerStyle={{ paddingTop: headerInset + Spacing.sm, paddingBottom: tabInset }}>
+      <ScrollView
+        gap="xl"
+        py="lg"
+        contentContainerStyle={{
+          paddingTop: headerInset + Spacing.sm,
+          paddingBottom: tabInset,
+        }}
+      >
         {trips.map((trip) => (
           <VStack key={trip.key} gap="sm" align="stretch">
             <VStack style={{ paddingHorizontal: 20 }}>
@@ -180,8 +188,15 @@ export default function Suggestions() {
                   <HeaderButton
                     icon={ImagePlus}
                     accessibilityLabel="Choose more photos"
+                    loading={choosing}
                     onPress={async () => {
-                      await editLimitedAccess();
+                      if (choosing) return;
+                      setChoosing(true);
+                      try {
+                        await editLimitedAccess();
+                      } finally {
+                        setChoosing(false);
+                      }
                       reload();
                     }}
                   />

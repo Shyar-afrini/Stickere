@@ -25,11 +25,16 @@ export type { StickerApp };
 function toInputs(stickers: Sticker[]): StickerInput[] {
   return stickers.map((sticker) => ({
     uri: getStickerUri(sticker.path),
-    emojis: sticker.emojis.length > 0 ? sticker.emojis.slice(0, 3) : [FALLBACK_EMOJI],
+    emojis:
+      sticker.emojis.length > 0 ? sticker.emojis.slice(0, 3) : [FALLBACK_EMOJI],
   }));
 }
 
-export async function sharePack(app: StickerApp, pack: Pack, stickers: Sticker[]) {
+export async function sharePack(
+  app: StickerApp,
+  pack: Pack,
+  stickers: Sticker[],
+) {
   if (Platform.OS === "web") {
     throw new ShareError("Sharing sticker packs isn’t supported on the web.");
   }
@@ -38,24 +43,34 @@ export async function sharePack(app: StickerApp, pack: Pack, stickers: Sticker[]
   const animated = animatedCount > 0;
   if (animated) {
     if (app !== "whatsapp") {
-      throw new ShareError("Animated stickers can only be shared to WhatsApp. Remove them to share to Telegram.");
+      throw new ShareError(
+        "Animated stickers can only be shared to WhatsApp. Remove them to share to Telegram.",
+      );
     }
     if (Platform.OS !== "ios") {
-      throw new ShareError("Animated stickers can only be shared from iPhone for now.");
+      throw new ShareError(
+        "Animated stickers can only be shared from iPhone for now.",
+      );
     }
     // WhatsApp keeps animated and still stickers in separate packs.
     if (animatedCount < stickers.length) {
-      throw new ShareError("WhatsApp packs are either all animated or all still. Move the GIFs to their own pack.");
+      throw new ShareError(
+        "WhatsApp packs are either all animated or all still. Move the GIFs to their own pack.",
+      );
     }
   }
   const shareable = stickers;
 
   if (app === "whatsapp") {
     if (shareable.length < WHATSAPP_MIN) {
-      throw new ShareError(`WhatsApp packs need at least ${WHATSAPP_MIN} stickers.`);
+      throw new ShareError(
+        `WhatsApp packs need at least ${WHATSAPP_MIN} stickers.`,
+      );
     }
     if (shareable.length > WHATSAPP_MAX) {
-      throw new ShareError(`WhatsApp packs can have at most ${WHATSAPP_MAX} stickers.`);
+      throw new ShareError(
+        `WhatsApp packs can have at most ${WHATSAPP_MAX} stickers.`,
+      );
     }
     const inputs = toInputs(shareable);
     await shareToWhatsApp({

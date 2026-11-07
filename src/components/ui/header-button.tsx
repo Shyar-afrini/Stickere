@@ -2,7 +2,6 @@ import type { LucideIcon } from "lucide-react-native";
 
 import { StyleSheet, View } from "react-native";
 
-
 import { Blur } from "./blur";
 import { Icon } from "./icon";
 import { Pressable } from "./pressable";
@@ -36,7 +35,13 @@ export function HeaderButton({
   accessibilityLabel,
 }: Props) {
   // Disabled turns the icon and text grey instead of fading the whole button.
-  const color = disabled ? "systemGray2" : destructive ? "systemRed" : label ? "systemBlue" : "label";
+  const color = disabled
+    ? "systemGray2"
+    : destructive
+      ? "systemRed"
+      : label
+        ? "systemBlue"
+        : "label";
 
   return (
     <View style={styles.shadow}>
@@ -54,7 +59,7 @@ export function HeaderButton({
             <Spinner />
           ) : (
             <>
-              {icon && <Icon icon={icon} size={20} color={color} />}
+              {icon && <Icon icon={icon} size={24} color={color} />}
               {label && (
                 <Text color={color} weight={bold ? "semibold" : undefined}>
                   {label}
@@ -68,7 +73,8 @@ export function HeaderButton({
   );
 }
 
-const SIZE = 40;
+/** 48 pt: comfortably above the 44 pt minimum touch target. */
+const SIZE = 48;
 
 const styles = StyleSheet.create({
   shadow: { borderRadius: SIZE / 2, marginHorizontal: 4 },
@@ -82,7 +88,7 @@ const styles = StyleSheet.create({
   pill: { minWidth: SIZE },
   press: {
     flex: 1,
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     alignItems: "center",
     justifyContent: "center",
   },

@@ -34,11 +34,17 @@ export function parseEmojis(text: string, limit = 3): string[] {
       for (;;) {
         while (
           i < chars.length &&
-          (chars[i] === VARIATION_SELECTOR || isModifier(chars[i]) || isTag(chars[i]))
+          (chars[i] === VARIATION_SELECTOR ||
+            isModifier(chars[i]) ||
+            isTag(chars[i]))
         ) {
           i++;
         }
-        if (chars[i] === ZWJ && i + 1 < chars.length && PICTOGRAPHIC.test(chars[i + 1])) {
+        if (
+          chars[i] === ZWJ &&
+          i + 1 < chars.length &&
+          PICTOGRAPHIC.test(chars[i + 1])
+        ) {
           i += 2;
         } else {
           break;

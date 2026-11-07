@@ -33,6 +33,8 @@ export const stickers = sqliteTable(
       .$type<string[]>()
       .notNull()
       .default([]),
+    // Short caption or story: the memory behind the sticker.
+    story: text("story"),
     isFavorite: integer("is_favorite", { mode: "boolean" })
       .notNull()
       .default(false),

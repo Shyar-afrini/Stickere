@@ -24,14 +24,12 @@ export function ReorderCell({
   controller,
   id,
   active,
-  editing,
   onEnterEditing,
   children,
 }: {
   controller: ReorderController;
   id: string;
   active: boolean;
-  editing: boolean;
   onEnterEditing: () => void;
   children: (handlers: Handlers) => ReactNode;
 }) {

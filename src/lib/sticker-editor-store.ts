@@ -1,4 +1,5 @@
-export type Tool = "cutout" | "write" | "paint" | "sticker" | "eraser" | "frame";
+export type Tool =
+  "cutout" | "write" | "paint" | "sticker" | "eraser" | "frame";
 export type Frame = "none" | "rounded" | "circle";
 
 type Point = { x: number; y: number };
@@ -91,7 +92,8 @@ export class StickerEditorStore {
       selectedId: null,
       tool: null,
     };
-    this.nextId = this.state.ops.reduce((highest, op) => Math.max(highest, op.id), 0) + 1;
+    this.nextId =
+      this.state.ops.reduce((highest, op) => Math.max(highest, op.id), 0) + 1;
   }
 
   /** The part of the state that makes up the picture, for saving a draft. */
@@ -115,7 +117,11 @@ export class StickerEditorStore {
   }
 
   setBase(base: { uri: string; width: number; height: number }) {
-    this.set({ baseUri: base.uri, baseWidth: base.width, baseHeight: base.height });
+    this.set({
+      baseUri: base.uri,
+      baseWidth: base.width,
+      baseHeight: base.height,
+    });
   }
 
   get dirty() {
@@ -124,14 +130,26 @@ export class StickerEditorStore {
 
   selected() {
     return this.state.ops.find(
-      (op): op is Layer => op.kind === "layer" && op.id === this.state.selectedId,
+      (op): op is Layer =>
+        op.kind === "layer" && op.id === this.state.selectedId,
     );
   }
 
-  addLayer(layer: Omit<
+  addLayer(
+    layer: Omit<
       Layer,
-      "kind" | "id" | "color" | "scale" | "rotation" | "bold" | "outline" | "outlineColor" | "outlineWidth"
-    > & Partial<Layer>) {
+      | "kind"
+      | "id"
+      | "color"
+      | "scale"
+      | "rotation"
+      | "bold"
+      | "outline"
+      | "outlineColor"
+      | "outlineWidth"
+    > &
+      Partial<Layer>,
+  ) {
     const id = this.nextId++;
     this.undone = [];
     this.set({
@@ -159,7 +177,9 @@ export class StickerEditorStore {
     if (!current) return;
     this.undone = [];
     this.set({
-      ops: this.state.ops.map((op) => (op === current ? { ...current, ...change(current) } : op)),
+      ops: this.state.ops.map((op) =>
+        op === current ? { ...current, ...change(current) } : op,
+      ),
     });
   }
 
@@ -176,7 +196,12 @@ export class StickerEditorStore {
     if (!last) return;
     this.undone.push(last);
     const ops = this.state.ops.slice(0, -1);
-    this.set({ ops, selectedId: ops.some((op) => op.id === this.state.selectedId) ? this.state.selectedId : null });
+    this.set({
+      ops,
+      selectedId: ops.some((op) => op.id === this.state.selectedId)
+        ? this.state.selectedId
+        : null,
+    });
   }
 
   get canRedo() {
@@ -212,13 +237,14 @@ export class StickerEditorStore {
       .reverse()
       .find(
         (op): op is Layer =>
-          op.kind === "layer" && Math.hypot(op.x - x, op.y - y) <= Math.max(op.radius * op.scale, 28),
+          op.kind === "layer" &&
+          Math.hypot(op.x - x, op.y - y) <= Math.max(op.radius * op.scale, 28),
       );
     this.dragStart = hit ? { x: hit.x, y: hit.y } : null;
     this.set({ selectedId: hit?.id ?? null });
   }
 
-  touchMove(x: number, y: number, dx: number, dy: number) {
+  touchMove(x: number, y: number) {
     const { tool } = this.state;
     if (tool === "paint" || tool === "eraser") {
       // Not a state change: the canvas reads the point and draws it straight away.

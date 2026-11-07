@@ -39,7 +39,14 @@ export function Chip({
       <Text variant="subheadline" color={tinted ? "onTint" : "label"}>
         #{label}
       </Text>
-      {onRemove && <Icon icon={X} size={14} color={tinted ? "onTint" : "secondaryLabel"} strokeWidth={2.5} />}
+      {onRemove && (
+        <Icon
+          icon={X}
+          size={14}
+          color={tinted ? "onTint" : "secondaryLabel"}
+          strokeWidth={2.5}
+        />
+      )}
     </Pressable>
   );
 }

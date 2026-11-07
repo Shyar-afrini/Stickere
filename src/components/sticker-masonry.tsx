@@ -2,7 +2,13 @@ import { useMemo } from "react";
 
 import { useHeaderInset } from "@/hooks/use-header-inset";
 import { useTabBarInset } from "@/hooks/use-tab-bar-inset";
-import { Box, Image, Pressable, ReorderCell, ScrollView } from "@/components/ui";
+import {
+  Box,
+  Image,
+  Pressable,
+  ReorderCell,
+  ScrollView,
+} from "@/components/ui";
 import type { useReorder } from "@/hooks/use-reorder";
 import type { Sticker } from "@/db/schema";
 import { getStickerUri } from "@/lib/sticker-storage";
@@ -21,11 +27,17 @@ type Props = {
 export function StickerMasonry({ reorder, onStickerPress }: Props) {
   const tabInset = useTabBarInset();
   const headerInset = useHeaderInset();
-  const { controller, order, activeKey, dragging, editing, startEditing } = reorder;
+  const { controller, order, activeKey, dragging, startEditing } = reorder;
   const columns = useMemo(() => splitColumns(order), [order]);
 
   return (
-    <ScrollView scrollEnabled={!dragging} contentContainerStyle={{ paddingTop: headerInset, paddingBottom: tabInset + 80 }}>
+    <ScrollView
+      scrollEnabled={!dragging}
+      contentContainerStyle={{
+        paddingTop: headerInset,
+        paddingBottom: tabInset + 80,
+      }}
+    >
       <Box row align="flex-start" gap="lg" p="lg">
         {columns.map((column, index) => (
           <Box
@@ -33,7 +45,11 @@ export function StickerMasonry({ reorder, onStickerPress }: Props) {
             flex={1}
             gap="lg"
             // The column holding the dragged card is drawn above the other one.
-            style={{ zIndex: column.some((sticker) => String(sticker.id) === activeKey) ? 1 : 0 }}
+            style={{
+              zIndex: column.some((sticker) => String(sticker.id) === activeKey)
+                ? 1
+                : 0,
+            }}
           >
             {column.map((sticker) => (
               <ReorderCell
@@ -41,7 +57,6 @@ export function StickerMasonry({ reorder, onStickerPress }: Props) {
                 controller={controller}
                 id={String(sticker.id)}
                 active={activeKey === String(sticker.id)}
-                editing={editing}
                 onEnterEditing={startEditing}
               >
                 {(handlers) => (

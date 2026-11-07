@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { PanResponder, ScrollView } from "react-native";
+import { PanResponder, ScrollView, StyleSheet } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import Animated, {
   interpolate,
@@ -121,7 +121,6 @@ export function Drawer({
     const progress = travel > 0 ? grow.get() / travel : 0;
     return {
       height: (peekHeight + grow.get()) * shown.get(),
-      opacity: Math.min(1, shown.get() * 3),
       shadowOpacity: interpolate(
         progress,
         [0, 1],
@@ -158,35 +157,55 @@ export function Drawer({
         style,
       ]}
     >
-      <Blur style={{ flex: 1, borderRadius: radius }}>
-        <Box {...pan.responder.panHandlers}>
-          <Pressable
-            feedback="none"
-            accessibilityRole="button"
-            accessibilityLabel={open ? "Collapse" : "Show all"}
-            onPress={() => pan.settle(open ? 0 : travel)}
-            style={{ paddingTop: 8, paddingBottom: 10, gap: 8 }}
-          >
-            <Box
-              style={{
-                alignSelf: "center",
-                width: 36,
-                height: 5,
-                borderRadius: 3,
-                backgroundColor: theme.systemGray3,
-              }}
-            />
-            {header}
-          </Pressable>
-        </Box>
-        <ScrollView
-          scrollEnabled={open}
-          showsVerticalScrollIndicator={open}
-          contentContainerStyle={{ paddingHorizontal: 14, paddingBottom: 14 }}
-          style={{ flex: 1 }}
+      {/* Only this clip changes size as the card rises, grows and sinks. The frosted layer inside keeps its full
+          size and is merely revealed: a blur view whose frame is animated can lose its glass. */}
+      <Box
+        overflow="hidden"
+        style={[StyleSheet.absoluteFill, { borderRadius: radius }]}
+      >
+        <Box
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: openHeight,
+          }}
         >
-          {children}
-        </ScrollView>
+          <Blur solid={0.5} style={{ flex: 1, borderRadius: radius }}>
+            <Box {...pan.responder.panHandlers}>
+              <Pressable
+                feedback="none"
+                accessibilityRole="button"
+                accessibilityLabel={open ? "Collapse" : "Show all"}
+                onPress={() => pan.settle(open ? 0 : travel)}
+                style={{ paddingTop: 8, paddingBottom: 10, gap: 8 }}
+              >
+                <Box
+                  style={{
+                    alignSelf: "center",
+                    width: 36,
+                    height: 5,
+                    borderRadius: 3,
+                    backgroundColor: theme.systemGray3,
+                  }}
+                />
+                {header}
+              </Pressable>
+            </Box>
+            <ScrollView
+              scrollEnabled={open}
+              showsVerticalScrollIndicator={open}
+              contentContainerStyle={{
+                paddingHorizontal: 14,
+                paddingBottom: 14,
+              }}
+              style={{ flex: 1 }}
+            >
+              {children}
+            </ScrollView>
+          </Blur>
+        </Box>
         {/* Always-on shade along the bottom edge: clear above, darkening toward the edge. */}
         <Box
           pointerEvents="none"
@@ -214,7 +233,7 @@ export function Drawer({
             <Rect width="100%" height="100%" fill="url(#drawer-shade)" />
           </Svg>
         </Box>
-      </Blur>
+      </Box>
     </Animated.View>
   );
 }

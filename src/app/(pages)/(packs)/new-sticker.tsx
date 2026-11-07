@@ -1,16 +1,17 @@
 import { eq } from "drizzle-orm";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
-import { useWindowDimensions } from "react-native";
 
-import { SHEET_HEIGHT } from "@/constants/sheet";
+import { useKeyboard } from "@/components/ui/keyboard-avoid";
+import { Spacing } from "@/constants/theme";
 
 import {
   Box,
   Chip,
-  HeaderButton,
+  DiscardConfirm,
   Image,
   KeyboardAvoid,
+  RouteSheet,
   ListRow,
   ListSection,
   Screen,
@@ -20,11 +21,12 @@ import {
   Text,
   TextField,
   Toggle,
-  showAlert,
+  showToast,
 } from "@/components/ui";
 import { db } from "@/db";
 import { createSticker, updateSticker } from "@/db/mutations";
 import { stickers } from "@/db/schema";
+import { useSheetAction } from "@/hooks/use-sheet-open";
 import { useConfirmDiscard } from "@/hooks/use-confirm-discard";
 import { usePacks } from "@/hooks/use-packs";
 import { deleteDraft } from "@/lib/drafts";
@@ -40,9 +42,12 @@ import { openAppSettings } from "@/lib/platform";
 import { getStickerUri } from "@/lib/sticker-storage";
 import { getPopularTags, getStickerTags, normalizeTag } from "@/lib/tags";
 
+/** Longest caption or story, in characters. */
+const STORY_MAX = 280;
+
 export default function NewSticker() {
   const router = useRouter();
-  const { height: windowHeight } = useWindowDimensions();
+  const keyboard = useKeyboard();
   const params = useLocalSearchParams<{
     packId?: string;
     stickerId?: string;
@@ -65,7 +70,11 @@ export default function NewSticker() {
   // Opened with a `stickerId` to edit an existing sticker instead of adding one.
   const [existing] = useState(() =>
     params.stickerId
-      ? db.select().from(stickers).where(eq(stickers.id, Number(params.stickerId))).get()
+      ? db
+          .select()
+          .from(stickers)
+          .where(eq(stickers.id, Number(params.stickerId)))
+          .get()
       : undefined,
   );
   const editing = existing !== undefined;
@@ -92,6 +101,7 @@ export default function NewSticker() {
   const image = original;
   const [name, setName] = useState(existing?.name ?? params.name ?? "Sticker");
   const [emojiText, setEmojiText] = useState(existing?.emojis.join("") ?? "");
+  const [story, setStory] = useState(existing?.story ?? "");
   const [tagList, setTagList] = useState<string[]>(() =>
     existing ? getStickerTags(existing.id) : [],
   );
@@ -115,19 +125,21 @@ export default function NewSticker() {
           country: existing.country,
         }
       : params.latitude && params.longitude
-      ? {
-          latitude: Number(params.latitude),
-          longitude: Number(params.longitude),
-          radiusMeters: Number(params.radiusMeters) || 100,
-          placeName: params.placeName || null,
-          locality: params.locality || null,
-          country: params.country || null,
-        }
-      : null;
+        ? {
+            latitude: Number(params.latitude),
+            longitude: Number(params.longitude),
+            radiusMeters: Number(params.radiusMeters) || 100,
+            placeName: params.placeName || null,
+            locality: params.locality || null,
+            country: params.country || null,
+          }
+        : null;
   // Where the current photo was taken; turning the location on prefers it over the GPS fix.
   const [photoLocation] = useState(initialLocation);
   const [locationOn, setLocationOn] = useState(initialLocation !== null);
-  const [location, setLocation] = useState<StickerLocation | null>(initialLocation);
+  const [location, setLocation] = useState<StickerLocation | null>(
+    initialLocation,
+  );
   const [locating, setLocating] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -136,17 +148,19 @@ export default function NewSticker() {
   const selectedPackId =
     chosenPackId ??
     createdPackId ??
-    (existing?.packId ?? (params.packId ? Number(params.packId) : packs[0]?.id));
+    existing?.packId ??
+    (params.packId ? Number(params.packId) : packs[0]?.id);
 
   // Anything typed or picked here that leaving would lose. The image itself stays in the editor's draft.
   const [initialTags] = useState(tagList);
   const dirty =
     name !== (existing?.name ?? params.name ?? "Sticker") ||
     emojiText !== (existing?.emojis.join("") ?? "") ||
+    story !== (existing?.story ?? "") ||
     tagList.join(",") !== initialTags.join(",") ||
     chosenPackId !== undefined ||
     locationOn !== (initialLocation !== null);
-  const allowLeave = useConfirmDiscard(dirty && !saving);
+  const { allowLeave, confirm } = useConfirmDiscard(dirty && !saving);
 
   const canSave =
     image !== null &&
@@ -179,20 +193,17 @@ export default function NewSticker() {
       const result = await getCurrentStickerLocation();
       if (result.status === "denied") {
         setLocationOn(false);
-        showAlert(
+        showToast(
           "Location Access Needed",
           "Allow location access in Settings to tag stickers with where they belong.",
-          [
-            { text: "Cancel", style: "cancel" },
-            { text: "Open Settings", onPress: () => openAppSettings() },
-          ],
+          { label: "Settings", onPress: () => openAppSettings() },
         );
       } else {
         setLocation(result.location);
       }
     } catch {
       setLocationOn(false);
-      showAlert("Couldn’t Get Location", "Please try again in a moment.");
+      showToast("Couldn’t Get Location", "Please try again in a moment.");
     } finally {
       setLocating(false);
     }
@@ -210,9 +221,11 @@ export default function NewSticker() {
           name,
           emojis: parseEmojis(emojiText),
           tags: tagList,
+          story,
           location,
           image:
-            image.uri === original?.uri && original.uri === getStickerUri(existing.path)
+            image.uri === original?.uri &&
+            original.uri === getStickerUri(existing.path)
               ? undefined
               : {
                   sourceUri: image.uri,
@@ -231,6 +244,7 @@ export default function NewSticker() {
           mimeType: image.mimeType,
           emojis: parseEmojis(emojiText),
           tags: tagList,
+          story,
           location: location ?? undefined,
           sourceAssetId: params.assetId,
         });
@@ -240,11 +254,14 @@ export default function NewSticker() {
       Haptic.success();
       allowLeave();
       router.dismissAll();
-      router.push({ pathname: "/(pages)/(packs)/[id]", params: { id: selectedPackId } });
+      router.push({
+        pathname: "/(pages)/(packs)/[id]",
+        params: { id: selectedPackId },
+      });
     } catch (error) {
       setSaving(false);
       Haptic.error();
-      showAlert(
+      showToast(
         editing ? "Couldn’t Save Sticker" : "Couldn’t Add Sticker",
         error instanceof Error ? error.message : "Something went wrong.",
       );
@@ -254,158 +271,230 @@ export default function NewSticker() {
   const tabs: { key: EditorTab; label: string }[] = [
     { key: "details", label: "Details" },
     { key: "tags", label: "Tags" },
-    ...(params.packId && !editing ? [] : [{ key: "pack" as const, label: "Pack" }]),
+    ...(params.packId && !editing
+      ? []
+      : [{ key: "pack" as const, label: "Pack" }]),
     { key: "place", label: "Place" },
   ];
 
+  // Measured, so the sheet is as tall as its header, image, tabs and the open tab's fields, no more.
+  const [chromeHeight, setChromeHeight] = useState(0);
+  const [contentHeight, setContentHeight] = useState(0);
+
+  // The save button lives in the tab bar while the sheet is open.
+  useSheetAction({
+    label: editing ? "Save Changes" : "Add Sticker",
+    loading: saving,
+    disabled: !canSave,
+    onPress: save,
+  });
+
   return (
-    <Screen>
-      <SheetHeader
-        title={editing ? "Edit Sticker" : "New Sticker"}
-        left={<HeaderButton label="Cancel" onPress={router.back} />}
-        right={
-          <HeaderButton
-            label={editing ? "Save" : "Add"}
-            bold
-            disabled={!canSave}
-            loading={saving}
-            onPress={save}
-          />
+    <Box flex={1}>
+      <RouteSheet
+        dirty={dirty && !saving}
+        measuring={!(chromeHeight && contentHeight)}
+        fitHeight={
+          chromeHeight && contentHeight
+            ? chromeHeight + contentHeight
+            : undefined
         }
-      />
-        <KeyboardAvoid keyboardVerticalOffset={windowHeight * (1 - SHEET_HEIGHT)}>
-          <Box
-            flex={1}
-            center
-            bg="secondarySystemGroupedBackground"
-            radius="xl"
-            overflow="hidden"
-            style={{ margin: 16, marginTop: 4, marginBottom: 12 }}
-          >
-            {image ? (
-              <Image
-                source={{ uri: image.uri }}
-                contentFit="contain"
-                style={{ width: "100%", height: "100%" }}
-              />
-            ) : null}
-          </Box>
-
-          <TabStrip tabs={tabs} value={tab} onChange={setTab} />
-
-          <Box flex={1}>
-            <ScrollView gap="md" py="md">
-              {tab === "details" && (
-                <ListSection footer="Up to 3 emoji. Needed to share to WhatsApp and Telegram.">
-                  <TextField value={name} onChangeText={setName} placeholder="Name" />
-                  <TextField
-                    value={emojiText}
-                    onChangeText={setEmojiText}
-                    placeholder="Emoji 😀"
-                    autoCorrect={false}
-                  />
-                </ListSection>
+      >
+        <Screen>
+          <KeyboardAvoid>
+            <Box
+              onLayout={(event) =>
+                setChromeHeight(Math.round(event.nativeEvent.layout.height))
+              }
+            >
+              <SheetHeader title={editing ? "Edit Sticker" : "New Sticker"} />
+              {/* Out of the way while typing, so the fields keep the room above the keyboard. */}
+              {!keyboard.open && (
+                <Box
+                  center
+                  bg="secondarySystemGroupedBackground"
+                  radius="xl"
+                  overflow="hidden"
+                  style={{
+                    height: 132,
+                    marginHorizontal: 16,
+                    marginTop: 12,
+                    marginBottom: 20,
+                  }}
+                >
+                  {image ? (
+                    <Image
+                      source={{ uri: image.uri }}
+                      contentFit="contain"
+                      style={{ width: "100%", height: "100%" }}
+                    />
+                  ) : null}
+                </Box>
               )}
 
-              {tab === "tags" && (
-                <>
-                  <ListSection footer="Tags help you find stickers later. Press return or comma to add one.">
-                    <TextField
-                      value={tagText}
-                      onChangeText={(text) =>
-                        text.endsWith(",") ? addTag(text.slice(0, -1)) : setTagText(text)
-                      }
-                      onSubmitEditing={() => addTag(tagText)}
-                      placeholder="Add a tag"
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      returnKeyType="done"
-                      blurOnSubmit={false}
+              <TabStrip tabs={tabs} value={tab} onChange={setTab} />
+            </Box>
+
+            <Box flex={1}>
+              <ScrollView
+                onContentSizeChange={(_, height) =>
+                  setContentHeight(Math.round(height))
+                }
+                gap="lg"
+                py="lg"
+                contentContainerStyle={{ paddingBottom: Spacing.xxxl }}
+              >
+                {tab === "details" && (
+                  <>
+                    <ListSection footer="Up to 3 emoji. Needed to share to WhatsApp and Telegram.">
+                      <TextField
+                        value={name}
+                        onChangeText={setName}
+                        placeholder="Name"
+                      />
+                      <TextField
+                        value={emojiText}
+                        onChangeText={setEmojiText}
+                        placeholder="Emoji 😀"
+                        autoCorrect={false}
+                      />
+                    </ListSection>
+                    <ListSection
+                      footer={`The memory behind this sticker. ${STORY_MAX - story.length} characters left.`}
+                    >
+                      <TextField
+                        multiline
+                        value={story}
+                        onChangeText={setStory}
+                        maxLength={STORY_MAX}
+                        placeholder="Add a caption or story…"
+                      />
+                    </ListSection>
+                  </>
+                )}
+
+                {tab === "tags" && (
+                  <>
+                    <ListSection footer="Tags help you find stickers later. Press return or comma to add one.">
+                      <TextField
+                        value={tagText}
+                        onChangeText={(text) =>
+                          text.endsWith(",")
+                            ? addTag(text.slice(0, -1))
+                            : setTagText(text)
+                        }
+                        onSubmitEditing={() => addTag(tagText)}
+                        placeholder="Add a tag"
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        returnKeyType="done"
+                        blurOnSubmit={false}
+                      />
+                    </ListSection>
+                    {tagList.length > 0 && (
+                      <Box row gap="sm" px="lg" style={{ flexWrap: "wrap" }}>
+                        {tagList.map((tag) => (
+                          <Chip
+                            key={tag}
+                            label={tag}
+                            tinted
+                            onRemove={() =>
+                              setTagList(
+                                tagList.filter((entry) => entry !== tag),
+                              )
+                            }
+                          />
+                        ))}
+                      </Box>
+                    )}
+                    {popularTags.some((tag) => !tagList.includes(tag)) && (
+                      <Box gap="sm" px="lg">
+                        <Text variant="footnote" color="secondaryLabel">
+                          YOUR TAGS
+                        </Text>
+                        <Box row gap="sm" style={{ flexWrap: "wrap" }}>
+                          {popularTags
+                            .filter((tag) => !tagList.includes(tag))
+                            .map((tag) => (
+                              <Chip
+                                key={tag}
+                                label={tag}
+                                onPress={() => addTag(tag)}
+                              />
+                            ))}
+                        </Box>
+                      </Box>
+                    )}
+                  </>
+                )}
+
+                {tab === "pack" && (
+                  <ListSection>
+                    {packs.map((pack) => (
+                      <ListRow
+                        key={pack.id}
+                        label={pack.name}
+                        accessory={
+                          pack.id === selectedPackId ? "checkmark" : undefined
+                        }
+                        onPress={() => setChosenPackId(pack.id)}
+                      />
+                    ))}
+                    <ListRow
+                      label="New Pack…"
+                      tinted
+                      onPress={() => {
+                        // The pack made there is picked automatically when this sheet shows again.
+                        setChosenPackId(undefined);
+                        setPacksBeforeNew(packs.map((pack) => pack.id));
+                        router.push("/(pages)/(packs)/pack-page");
+                      }}
                     />
                   </ListSection>
-                  {tagList.length > 0 && (
-                    <Box row gap="sm" px="lg" style={{ flexWrap: "wrap" }}>
-                      {tagList.map((tag) => (
-                        <Chip
-                          key={tag}
-                          label={tag}
-                          tinted
-                          onRemove={() => setTagList(tagList.filter((entry) => entry !== tag))}
-                        />
-                      ))}
-                    </Box>
-                  )}
-                  {popularTags.some((tag) => !tagList.includes(tag)) && (
-                    <Box gap="sm" px="lg">
-                      <Text variant="footnote" color="secondaryLabel">
-                        YOUR TAGS
-                      </Text>
-                      <Box row gap="sm" style={{ flexWrap: "wrap" }}>
-                        {popularTags
-                          .filter((tag) => !tagList.includes(tag))
-                          .map((tag) => (
-                            <Chip key={tag} label={tag} onPress={() => addTag(tag)} />
-                          ))}
-                      </Box>
-                    </Box>
-                  )}
-                </>
-              )}
+                )}
 
-              {tab === "pack" && (
-                <ListSection>
-                  {packs.map((pack) => (
+                {tab === "place" && (
+                  <ListSection
+                    footer={
+                      photoLocation
+                        ? "Taken from where the photo was captured."
+                        : "This photo has no location, so your current position is used."
+                    }
+                  >
                     <ListRow
-                      key={pack.id}
-                      label={pack.name}
-                      accessory={pack.id === selectedPackId ? "checkmark" : undefined}
-                      onPress={() => setChosenPackId(pack.id)}
+                      label={
+                        photoLocation
+                          ? "Photo Location"
+                          : editing
+                            ? "Saved Place"
+                            : "Current Location"
+                      }
+                      detail={
+                        !locationOn
+                          ? undefined
+                          : locating
+                            ? "Finding your location…"
+                            : location
+                              ? describeLocation(location)
+                              : undefined
+                      }
+                      trailing={
+                        <Toggle
+                          value={locationOn}
+                          onValueChange={toggleLocation}
+                          disabled={locating}
+                        />
+                      }
                     />
-                  ))}
-                  <ListRow
-                    label="New Pack…"
-                    tinted
-                    onPress={() => {
-                      // The pack made there is picked automatically when this sheet shows again.
-                      setChosenPackId(undefined);
-                      setPacksBeforeNew(packs.map((pack) => pack.id));
-                      router.push("/(pages)/(packs)/pack-page");
-                    }}
-                  />
-                </ListSection>
-              )}
-
-              {tab === "place" && (
-                <ListSection footer={
-                  photoLocation
-                    ? "Taken from where the photo was captured."
-                    : "This photo has no location, so your current position is used."
-                }>
-                  <ListRow
-                    label={photoLocation ? "Photo Location" : editing ? "Saved Place" : "Current Location"}
-                    detail={
-                      !locationOn
-                        ? undefined
-                        : locating
-                          ? "Finding your location…"
-                          : location
-                            ? describeLocation(location)
-                            : undefined
-                    }
-                    trailing={
-                      <Toggle
-                        value={locationOn}
-                        onValueChange={toggleLocation}
-                        disabled={locating}
-                      />
-                    }
-                  />
-                </ListSection>
-              )}
-            </ScrollView>
-          </Box>
-        </KeyboardAvoid>
-    </Screen>
+                  </ListSection>
+                )}
+              </ScrollView>
+            </Box>
+          </KeyboardAvoid>
+          <DiscardConfirm {...confirm} />
+        </Screen>
+      </RouteSheet>
+    </Box>
   );
 }
 

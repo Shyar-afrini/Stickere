@@ -5,7 +5,10 @@ import { useState } from "react";
 
 import {
   Box,
+  KeyboardAvoid,
+  RouteSheet,
   Button,
+  DiscardConfirm,
   HeaderButton,
   Image,
   ListRow,
@@ -14,11 +17,12 @@ import {
   Screen,
   SheetHeader,
   TextField,
-  showAlert,
+  showToast,
 } from "@/components/ui";
 import { db } from "@/db";
 import { createPack, updatePack } from "@/db/mutations";
 import { packs } from "@/db/schema";
+import { useSheetAction } from "@/hooks/use-sheet-open";
 import { useConfirmDiscard } from "@/hooks/use-confirm-discard";
 import { Spacing } from "@/constants/theme";
 import { useHeaderInset } from "@/hooks/use-header-inset";
@@ -33,6 +37,9 @@ import {
  * Create or edit a pack. Shown as a sheet (title bar drawn inside it) or, with `asPage`, as a pushed
  * page under the app's header — opened from inside another sheet, where a second sheet misbehaves.
  */
+/** The form is short: the sheet is only as tall as it needs to be. */
+const PACK_SHEET_HEIGHT = 540;
+
 export function PackForm({ asPage = false }: { asPage?: boolean }) {
   const router = useRouter();
   const headerInset = useHeaderInset();
@@ -59,13 +66,21 @@ export function PackForm({ asPage = false }: { asPage?: boolean }) {
       : null,
   );
 
+  const [choosing, setChoosing] = useState(false);
   const chooseCover = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.9,
-    });
+    if (choosing) return;
+    setChoosing(true);
+    let result: ImagePicker.ImagePickerResult;
+    try {
+      result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.9,
+      });
+    } finally {
+      setChoosing(false);
+    }
     if (result.canceled) return;
     Haptic.selection();
     setCover({ uri: result.assets[0].uri, picked: true });
@@ -78,7 +93,7 @@ export function PackForm({ asPage = false }: { asPage?: boolean }) {
     description !== (existing?.description ?? "") ||
     (cover?.picked ?? false) ||
     (cover === null && !!existing?.coverPath);
-  const allowLeave = useConfirmDiscard(dirty);
+  const { allowLeave, confirm } = useConfirmDiscard(dirty);
 
   const [saving, setSaving] = useState(false);
 
@@ -102,14 +117,14 @@ export function PackForm({ asPage = false }: { asPage?: boolean }) {
     } catch (error) {
       setSaving(false);
       Haptic.error();
-      showAlert(
+      showToast(
         editing ? "Couldn’t Save Pack" : "Couldn’t Create Pack",
         error instanceof Error ? error.message : "Something went wrong.",
       );
     }
   };
 
-  return (
+  const content = (
     <Screen>
       {asPage ? (
         <Stack.Screen
@@ -129,15 +144,14 @@ export function PackForm({ asPage = false }: { asPage?: boolean }) {
         <SheetHeader title={editing ? "Edit Pack" : "New Pack"} />
       )}
       <ScrollView
-        gap="xl"
-        py="lg"
+        gap="lg"
+        py="md"
         contentContainerStyle={
           asPage && { paddingTop: headerInset + Spacing.sm }
         }
       >
         <ListSection>
           <TextField
-            autoFocus={!editing}
             value={name}
             onChangeText={setName}
             placeholder="Name"
@@ -149,6 +163,7 @@ export function PackForm({ asPage = false }: { asPage?: boolean }) {
           <ListRow
             label={cover ? "Change Cover Image" : "Add Cover Image"}
             tinted
+            loading={choosing}
             onPress={chooseCover}
             trailing={
               cover ? (
@@ -187,15 +202,47 @@ export function PackForm({ asPage = false }: { asPage?: boolean }) {
             placeholder="Description"
           />
         </ListSection>
-        <Box px="lg">
-          <Button
-            title={editing ? "Save Changes" : "Create Pack"}
-            loading={saving}
-            disabled={!canSave || (editing && !dirty)}
-            onPress={save}
-          />
-        </Box>
+        {asPage && (
+          <Box px="lg">
+            <Button
+              title={editing ? "Save Changes" : "Create Pack"}
+              loading={saving}
+              disabled={!canSave || (editing && !dirty)}
+              onPress={save}
+            />
+          </Box>
+        )}
       </ScrollView>
     </Screen>
+  );
+
+  // As a sheet, the save button lives in the tab bar while the sheet is open.
+  useSheetAction(
+    asPage
+      ? null
+      : {
+          label: editing ? "Save Changes" : "Create Pack",
+          loading: saving,
+          disabled: !canSave || (editing && !dirty),
+          onPress: save,
+        },
+  );
+
+  // As a sheet it is drawn on the frosted `RouteSheet`; as a page it fills the screen.
+  return asPage ? (
+    <Box flex={1}>
+      {content}
+      <DiscardConfirm {...confirm} />
+    </Box>
+  ) : (
+    <Box flex={1}>
+      <RouteSheet dirty={dirty && !saving} maxHeight={PACK_SHEET_HEIGHT}>
+        <Box flex={1}>
+          {/* Lifts the form above the keyboard, so the lower fields stay in view while typing. */}
+          <KeyboardAvoid>{content}</KeyboardAvoid>
+          <DiscardConfirm {...confirm} />
+        </Box>
+      </RouteSheet>
+    </Box>
   );
 }

@@ -11,7 +11,12 @@ export type IconProps = {
 };
 
 /** Lucide icon tinted with a theme color. */
-export function Icon({ icon: Glyph, size = 20, color = "label", strokeWidth = 2 }: IconProps) {
+export function Icon({
+  icon: Glyph,
+  size = 20,
+  color = "label",
+  strokeWidth = 2,
+}: IconProps) {
   const theme = useTheme();
 
   return <Glyph size={size} color={theme[color]} strokeWidth={strokeWidth} />;
