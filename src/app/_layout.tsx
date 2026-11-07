@@ -1,11 +1,12 @@
 import { useMigrations } from "drizzle-orm/expo-sqlite/migrator";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 
 import { LoadingScreen } from "@/components/loading-screen";
 import { LockModal } from "@/components/lock-screen";
-import { Screen, Text } from "@/components/ui";
+import { DialogHost, Screen, Text } from "@/components/ui";
 import { unlockApp, useLockState } from "@/lib/lock-state";
 import "@/lib/geofence";
 import { db } from "@/db";
@@ -47,8 +48,11 @@ export default function RootLayout() {
 
   return (
     <>
+      {/* Dark icons on light screens and light icons on dark ones, on both platforms. */}
+      <StatusBar style="auto" />
       <Stack screenOptions={{ headerShown: false }} />
       <AppLockGate />
+      <DialogHost />
     </>
   );
 }

@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { LayoutAnimation } from "react-native";
+import { useEffect, useLayoutEffect, useState } from "react";
 
 import { ReorderController } from "@/lib/reorder-controller";
 
@@ -24,15 +23,23 @@ export function useReorder<T>(
     const byKey = new Map(order.map((item) => [keyOf(item), item]));
     const toItems = (keys: string[]) => keys.map((key) => byKey.get(key)!);
 
-    controller.configure(order.map(keyOf), {
-      onReorder: (keys) => {
-        LayoutAnimation.configureNext(LayoutAnimation.create(160, "easeInEaseOut", "opacity"));
-        setDraft({ base: items, order: toItems(keys) });
+    controller.configure(
+      order.map(keyOf),
+      {
+        onReorder: (keys) => {
+          setDraft({ base: items, order: toItems(keys) });
+        },
+        onActive: (key) => setActiveKey(key),
+        onCommit: (keys) => onCommit(toItems(keys)),
       },
-      onActive: (key) => setActiveKey(key),
-      onCommit: (keys) => onCommit(toItems(keys)),
-    }, editing);
+      editing,
+    );
   });
+
+  // The dropped order is on screen: clear the drag offsets so the cards stand in their new slots.
+  useLayoutEffect(() => {
+    controller.finishDrop();
+  }, [controller, order]);
 
   useEffect(() => {
     controller.setJiggling(editing);

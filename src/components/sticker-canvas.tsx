@@ -402,7 +402,7 @@ export function StickerCanvas({ store, side, canvasRef }: Props) {
   const scene =
     state.outline && state.frame === "none" ? (
       <>
-        <Silhouette color="#FFFFFF" width={state.outlineWidth}>
+        <Silhouette color={state.outlineColor} width={state.outlineWidth}>
           <SkiaImage image={image} x={base.x} y={base.y} width={base.width} height={base.height} fit="fill" />
           {state.ops.map((op) =>
             op.kind === "stroke" && op.erase ? (

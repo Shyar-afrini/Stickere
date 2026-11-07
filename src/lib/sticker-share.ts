@@ -34,31 +34,43 @@ export async function sharePack(app: StickerApp, pack: Pack, stickers: Sticker[]
     throw new ShareError("Sharing sticker packs isn’t supported on the web.");
   }
 
-  const still = stickers.filter((sticker) => !sticker.isAnimated);
-  if (still.length < stickers.length) {
-    throw new ShareError("Animated stickers can’t be shared yet. Remove them and try again.");
+  const animatedCount = stickers.filter((sticker) => sticker.isAnimated).length;
+  const animated = animatedCount > 0;
+  if (animated) {
+    if (app !== "whatsapp") {
+      throw new ShareError("Animated stickers can only be shared to WhatsApp. Remove them to share to Telegram.");
+    }
+    if (Platform.OS !== "ios") {
+      throw new ShareError("Animated stickers can only be shared from iPhone for now.");
+    }
+    // WhatsApp keeps animated and still stickers in separate packs.
+    if (animatedCount < stickers.length) {
+      throw new ShareError("WhatsApp packs are either all animated or all still. Move the GIFs to their own pack.");
+    }
   }
+  const shareable = stickers;
 
   if (app === "whatsapp") {
-    if (still.length < WHATSAPP_MIN) {
+    if (shareable.length < WHATSAPP_MIN) {
       throw new ShareError(`WhatsApp packs need at least ${WHATSAPP_MIN} stickers.`);
     }
-    if (still.length > WHATSAPP_MAX) {
+    if (shareable.length > WHATSAPP_MAX) {
       throw new ShareError(`WhatsApp packs can have at most ${WHATSAPP_MAX} stickers.`);
     }
-    const inputs = toInputs(still);
+    const inputs = toInputs(shareable);
     await shareToWhatsApp({
       identifier: `pack-${pack.id}`,
       name: pack.name,
       publisher: pack.author ?? "Stickerê",
       trayUri: inputs[0].uri,
       stickers: inputs,
+      animated,
     });
     return;
   }
 
-  if (still.length === 0) {
+  if (shareable.length === 0) {
     throw new ShareError("Add at least one sticker first.");
   }
-  await shareToTelegram({ stickers: toInputs(still) });
+  await shareToTelegram({ stickers: toInputs(shareable) });
 }

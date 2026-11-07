@@ -36,7 +36,7 @@ export function Chip({
         backgroundColor: tinted ? theme.systemBlue : theme.systemFill,
       }}
     >
-      <Text variant="subheadline" style={{ color: tinted ? "#fff" : theme.label }}>
+      <Text variant="subheadline" color={tinted ? "onTint" : "label"}>
         #{label}
       </Text>
       {onRemove && <Icon icon={X} size={14} color={tinted ? "onTint" : "secondaryLabel"} strokeWidth={2.5} />}

@@ -1,0 +1,1 @@
+ALTER TABLE `packs` ADD `cover_path` text;

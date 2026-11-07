@@ -3,6 +3,7 @@ import { FileClock, Trash2 } from "lucide-react-native";
 import { useState } from "react";
 
 import { Box, EmptyState, Icon, Image, Pressable, Screen, ScrollView, Text, confirmDelete } from "@/components/ui";
+import { Spacing } from "@/constants/theme";
 import { useHeaderInset } from "@/hooks/use-header-inset";
 import { useTabBarInset } from "@/hooks/use-tab-bar-inset";
 import { deleteDraft, listDrafts } from "@/lib/drafts";
@@ -27,7 +28,7 @@ export default function Drafts() {
 
   return (
     <Screen>
-      <ScrollView gap="md" py="lg" contentContainerStyle={{ paddingHorizontal: 16, paddingTop: headerInset + 16, paddingBottom: tabInset }}>
+      <ScrollView gap="md" py="lg" contentContainerStyle={{ paddingHorizontal: 16, paddingTop: headerInset + Spacing.sm, paddingBottom: tabInset }}>
         {drafts.map((draft) => (
           <Box
             key={draft.id}

@@ -1,4 +1,4 @@
-import { Share, Smile, Trash2 } from "lucide-react-native";
+import { Ellipsis, Smile } from "lucide-react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 
 import { LockScreen } from "@/components/lock-screen";
@@ -8,6 +8,7 @@ import {
   HeaderButton,
   Screen,
   confirmDelete,
+  showActionSheet,
   showAlert,
 } from "@/components/ui";
 import { deletePack, reorderStickers } from "@/db/mutations";
@@ -16,6 +17,7 @@ import { usePack } from "@/hooks/use-packs";
 import { unlockPack, useLockState } from "@/lib/lock-state";
 import { startNewSticker } from "@/lib/add-sticker";
 import { ShareError, sharePack, type StickerApp } from "@/lib/sticker-share";
+import { Haptic } from "@/lib/haptics";
 
 export default function PackDetail() {
   const router = useRouter();
@@ -50,6 +52,7 @@ export default function PackDetail() {
               error.code === "ERR_APP_NOT_INSTALLED"
             ? error.message
             : "Something went wrong while sharing.";
+      Haptic.error();
       showAlert("Couldn’t Share Pack", message);
     }
   };
@@ -59,6 +62,27 @@ export default function PackDetail() {
       { text: "WhatsApp", onPress: () => share("whatsapp") },
       { text: "Telegram", onPress: () => share("telegram") },
       { text: "Cancel", style: "cancel" },
+    ]);
+
+  const askDelete = () =>
+    confirmDelete({
+      title: `Delete “${pack?.name ?? "pack"}”?`,
+      message: "The pack and all of its stickers will be deleted.",
+      onConfirm: () => {
+        router.back();
+        deletePack(packId);
+      },
+    });
+
+  const openActions = () =>
+    showActionSheet(pack?.name ?? "Pack", [
+      {
+        label: "Edit Pack",
+        onPress: () =>
+          router.push({ pathname: "/(pages)/(packs)/new-pack", params: { packId } }),
+      },
+      ...(stickers.length > 0 ? [{ label: "Export Pack", onPress: chooseShareTarget }] : []),
+      { label: "Delete Pack", destructive: true, onPress: askDelete },
     ]);
 
   return (
@@ -71,28 +95,7 @@ export default function PackDetail() {
               <HeaderButton label="Done" bold onPress={reorder.stopEditing} />
             ) : (
             <>
-              <HeaderButton
-                icon={Share}
-                accessibilityLabel="Share pack"
-                disabled={stickers.length === 0}
-                onPress={chooseShareTarget}
-              />
-              <HeaderButton
-                icon={Trash2}
-                destructive
-                accessibilityLabel="Delete pack"
-                onPress={() =>
-                  confirmDelete({
-                    title: `Delete “${pack?.name ?? "pack"}”?`,
-                    message:
-                      "The pack and all of its stickers will be deleted.",
-                    onConfirm: () => {
-                      router.back();
-                      deletePack(packId);
-                    },
-                  })
-                }
-              />
+              <HeaderButton icon={Ellipsis} accessibilityLabel="Pack actions" onPress={openActions} />
             </>
           ),
         }}

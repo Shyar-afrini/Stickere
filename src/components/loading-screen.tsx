@@ -1,8 +1,7 @@
 import { Image } from "expo-image";
 import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
 
-import { useTheme } from "@/hooks/use-theme";
+import { Box, Text } from "@/components/ui";
 
 const TIPS = [
   "Long-press a sticker or pack to rearrange it.",
@@ -19,29 +18,21 @@ const ANIMATION_RATIO = 444 / 405;
 
 /** Shown while the app starts: the looping animation, on a transparent GIF so it suits any theme, with a tip underneath. */
 export function LoadingScreen() {
-  const theme = useTheme();
   const [tip] = useState(() => TIPS[Math.floor(Math.random() * TIPS.length)]);
 
   return (
-    <View style={[styles.screen, { backgroundColor: theme.systemGroupedBackground }]}>
+    <Box flex={1} center bg="systemGroupedBackground" style={{ paddingHorizontal: 40 }}>
       <Image
         source={require("../../assets/loading.gif")}
         contentFit="contain"
         style={{ width: ANIMATION_WIDTH, height: ANIMATION_WIDTH / ANIMATION_RATIO }}
       />
-      <Text style={[styles.label, { color: theme.secondaryLabel }]}>TIP</Text>
-      <Text style={[styles.tip, { color: theme.label }]}>{tip}</Text>
-    </View>
+      <Text variant="caption1" weight="bold" color="secondaryLabel" style={{ marginTop: 28, letterSpacing: 1.2 }}>
+        TIP
+      </Text>
+      <Text variant="callout" align="center" style={{ marginTop: 6 }}>
+        {tip}
+      </Text>
+    </Box>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 40,
-  },
-  label: { marginTop: 28, fontSize: 12, fontWeight: "700", letterSpacing: 1.2 },
-  tip: { marginTop: 6, fontSize: 16, lineHeight: 22, textAlign: "center" },
-});

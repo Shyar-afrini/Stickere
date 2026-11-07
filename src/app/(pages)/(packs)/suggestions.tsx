@@ -1,7 +1,7 @@
+import { Spacing } from "@/constants/theme";
 import { useHeaderInset } from "@/hooks/use-header-inset";
 import { useTabBarInset } from "@/hooks/use-tab-bar-inset";
 import { ImagePlus, Images, Map as MapIcon, TriangleAlert } from "lucide-react-native";
-import { Linking } from "react-native";
 import { Stack, useRouter } from "expo-router";
 
 import {
@@ -25,6 +25,7 @@ import {
   type SuggestedTrip,
   type TripPhoto,
 } from "@/lib/photo-library";
+import { openAppSettings } from "@/lib/platform";
 
 const THUMB = 132;
 
@@ -96,7 +97,7 @@ export default function Suggestions() {
         description="Allow access to your photos so Stickerê can suggest stickers from your trips."
         action={{
           label: "Open Settings",
-          onPress: () => Linking.openSettings(),
+          onPress: () => openAppSettings(),
         }}
       />
     );
@@ -125,7 +126,7 @@ export default function Suggestions() {
     );
   } else {
     content = (
-      <ScrollView gap="xxl" py="lg" contentContainerStyle={{ paddingTop: headerInset + 16, paddingBottom: tabInset }}>
+      <ScrollView gap="xl" py="lg" contentContainerStyle={{ paddingTop: headerInset + Spacing.sm, paddingBottom: tabInset }}>
         {trips.map((trip) => (
           <VStack key={trip.key} gap="sm" align="stretch">
             <VStack style={{ paddingHorizontal: 20 }}>

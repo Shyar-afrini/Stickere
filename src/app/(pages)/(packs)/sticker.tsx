@@ -96,9 +96,9 @@ export default function StickerCard() {
   };
 
   return (
-    <Screen center bg="systemGroupedBackground" gap="xxxl" style={{ paddingTop: headerInset }}>
+    <Screen center bg="systemGroupedBackground" gap="xl" style={{ paddingTop: headerInset }}>
       <Stack.Screen options={{ title: "" }} />
-      <Box style={{ shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 16, shadowOffset: { width: 0, height: 8 } }}>
+      <Box>
         <FlipCard
           front={<Stamp sticker={sticker} width={stampWidth} />}
           back={

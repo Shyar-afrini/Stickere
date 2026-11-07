@@ -1,21 +1,22 @@
-import { BlurView } from "expo-blur";
 import { useGlobalSearchParams, useRouter, useSegments } from "expo-router";
 import { TabList, TabSlot, TabTrigger, Tabs, type TabTriggerSlotProps } from "expo-router/ui";
 import { Bell, ChevronsUpDown, FileClock, House, Layers, Lightbulb, MapPin, Plus, Settings, Sparkles, Sticker, Trophy, type LucideIcon } from "lucide-react-native";
 import { createContext, useContext, useEffect, useState } from "react";
-import { StyleSheet, View, useWindowDimensions, type ViewProps } from "react-native";
+import { StyleSheet, useWindowDimensions, type ViewProps } from "react-native";
 import Animated, {
   Extrapolation,
   interpolate,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
   withSpring,
+  withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Icon, Pressable, Text } from "@/components/ui";
-import { Shadows } from "@/constants/theme";
-import { useColorScheme } from "@/hooks/use-color-scheme";
+import { Blur, Box, Icon, Pressable, Text } from "@/components/ui";
+import { Duration, Springs, Stagger, Timings } from "@/constants/motion";
+import { Haptic } from "@/lib/haptics";
 import { TAB_BAR_GAP, TAB_BAR_HEIGHT, TAB_BAR_MARGIN, TAB_BAR_SIDE_MARGIN } from "@/hooks/use-tab-bar-inset";
 import { useTheme } from "@/hooks/use-theme";
 import { startNewSticker } from "@/lib/add-sticker";
@@ -45,7 +46,17 @@ function TabButton({
   }, [isFocused, index, select]);
 
   return (
-    <Pressable {...props} style={[styles.button, { width: buttonWidth }]} accessibilityLabel={label}>
+    <Pressable
+      {...props}
+      onPress={(event) => {
+        if (!isFocused) Haptic.selection();
+        props.onPress?.(event);
+      }}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: isFocused }}
+      style={[styles.button, { width: buttonWidth }]}
+      accessibilityLabel={label}
+    >
       <Icon
         icon={icon}
         size={24}
@@ -64,9 +75,12 @@ function TabButton({
 
 type AddAction = { label: string; icon: LucideIcon; onPress: () => void };
 
-const SPRING = { damping: 16, stiffness: 180, mass: 0.8 };
 /** Height of the expanded panel the pill morphs into. */
 const MENU_HEIGHT = 272;
+/** Space above the open card, so the spring's overshoot isn't clipped. */
+const OVERSHOOT_ROOM = 16;
+/** The panel's full size: the bar, the open menu, and room for the overshoot. */
+const PANEL_HEIGHT = TAB_BAR_HEIGHT + MENU_HEIGHT + OVERSHOOT_ROOM;
 
 /**
  * Detached pill floating over the content, next to a round add button. The
@@ -76,7 +90,6 @@ const MENU_HEIGHT = 272;
  */
 function TabBar({ children, style, ...props }: ViewProps) {
   const theme = useTheme();
-  const scheme = useColorScheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const segments = useSegments();
@@ -88,13 +101,15 @@ function TabBar({ children, style, ...props }: ViewProps) {
   const buttonWidth = (pillWidth - BAR_PADDING * 2) / 4;
   const active = useSharedValue(0);
   const progress = useSharedValue(0);
+  // The menu's items, faded on their own so they are gone before the panel starts to close.
+  const content = useSharedValue(0);
 
   const [open, setOpen] = useState(false);
 
   // A sticker added from inside a pack goes into that pack.
   const inPack = segments[segments.length - 1] === "[id]";
   // The sticker editor is a full page with its own controls at the bottom.
-  const hidden = ["new-sticker", "edit-image", "sticker"].includes(segments[segments.length - 1]);
+  const hidden = ["new-sticker", "edit-image", "sticker", "pack-page"].includes(segments[segments.length - 1]);
   const actions: AddAction[] = [
     {
       label: "Sticker",
@@ -144,38 +159,47 @@ function TabBar({ children, style, ...props }: ViewProps) {
       };
 
   const select = (index: number) => {
-    active.value = withSpring(index, SPRING);
+    active.value = withSpring(index, Springs.snappy);
   };
 
   const toggle = (next: boolean) => {
     setOpen(next);
-    progress.value = withSpring(next ? 1 : 0, SPRING);
+    if (next) {
+      // Soft spring for the panel; the items ease in while it is still settling.
+      progress.value = withSpring(1, Springs.gentle);
+      content.value = withDelay(Stagger, withTiming(1, Timings.fadeIn));
+    } else {
+      // The items fade out first, so they are gone before the panel closes.
+      content.value = withTiming(0, Timings.fadeOut);
+      progress.value = withDelay(Duration.fast, withSpring(0, Springs.snappy));
+    }
   };
 
   const bubbleStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: active.value * buttonWidth }],
   }));
 
-  // Unclamped on purpose: the overshoot of the spring is the bounce.
-  const panelStyle = useAnimatedStyle(() => ({
-    height: TAB_BAR_HEIGHT + progress.value * MENU_HEIGHT,
-    borderRadius: interpolate(progress.value, [0, 1], [34, 28], Extrapolation.CLAMP),
+  // The frosted card is always full height and slides up from behind the bar's bottom edge, so opening
+  // moves a layer (a transform) instead of re-laying out the panel every frame. Unclamped on purpose:
+  // the overshoot of the spring is the bounce.
+  const cardStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: (1 - progress.value) * MENU_HEIGHT }],
   }));
 
   const tabsStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 0.4], [1, 0], Extrapolation.CLAMP),
+    opacity: interpolate(progress.value, [0, 0.25], [1, 0], Extrapolation.CLAMP),
   }));
 
   const menuStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0.1, 0.6], [0, 1], Extrapolation.CLAMP),
+    opacity: content.value,
     transform: [
-      { translateY: interpolate(progress.value, [0, 1], [40, 0]) },
-      { scale: interpolate(progress.value, [0, 1], [0.7, 1]) },
+      { translateY: interpolate(content.value, [0, 1], [12, 0]) },
+      { scale: interpolate(content.value, [0, 1], [0.96, 1]) },
     ],
   }));
 
   const dividerStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0.3, 0.8], [0, 1], Extrapolation.CLAMP),
+    opacity: content.value,
   }));
 
   // Turns upside down while the menu is open.
@@ -183,7 +207,6 @@ function TabBar({ children, style, ...props }: ViewProps) {
     transform: [{ rotate: `${progress.value * 180}deg` }],
   }));
 
-  const tint = scheme === "dark" ? "systemThickMaterialDark" : "systemThickMaterialLight";
 
   return (
     <TabBarContext.Provider value={{ select, buttonWidth }}>
@@ -195,16 +218,21 @@ function TabBar({ children, style, ...props }: ViewProps) {
           onPress={() => toggle(false)}
         />
       )}
-      <View
+      <Box
         pointerEvents="box-none"
         style={[styles.wrap, { bottom: insets.bottom + TAB_BAR_MARGIN }, hidden && { display: "none" }]}
       >
-        <Animated.View style={[styles.pill, styles.shadow, Shadows.floating, { width: pillWidth }, panelStyle]}>
-          <BlurView
-            intensity={60}
-            tint={tint}
-            style={[styles.bar, { borderColor: theme.separator }]}
-          >
+        <Box
+          pointerEvents="box-none"
+          style={[styles.shadow, { width: pillWidth, height: PANEL_HEIGHT }]}
+        >
+          {/* Clips the card at the bar's bottom edge; only what has slid up above it shows. */}
+          <Box pointerEvents="box-none" style={styles.clip}>
+            <Animated.View pointerEvents="none" style={[styles.card, cardStyle]}>
+              <Blur style={styles.bar} />
+            </Animated.View>
+            {/* The card's own bottom edge is clipped away, so the bar's rounded bottom border is drawn here. */}
+            <Box pointerEvents="none" style={[styles.bottomEdge, { borderColor: theme.separator }]} />
             <Animated.View
               pointerEvents={open ? "none" : "auto"}
               style={[styles.tabs, tabsStyle]}
@@ -221,12 +249,12 @@ function TabBar({ children, style, ...props }: ViewProps) {
               />
               {/* expo-router's tab list spreads its items with `space-between`; the tabs must pack to the left, in the
                   first three slots, leaving the fourth to the menu button. */}
-              <View
+              <Box
                 {...props}
                 style={[style, styles.list, { width: buttonWidth * 3 + BAR_PADDING, justifyContent: "flex-start" }]}
               >
                 {children}
-              </View>
+              </Box>
             </Animated.View>
             <Animated.View
               pointerEvents={open ? "auto" : "none"}
@@ -242,9 +270,9 @@ function TabBar({ children, style, ...props }: ViewProps) {
                     action.onPress();
                   }}
                 >
-                  <View style={[styles.tileIcon, { backgroundColor: theme.systemFill }]}>
+                  <Box style={[styles.tileIcon, { backgroundColor: theme.systemFill }]}>
                     <Icon icon={action.icon} size={24} />
-                  </View>
+                  </Box>
                   <Text variant="caption2" color="secondaryLabel">
                     {action.label}
                   </Text>
@@ -263,7 +291,7 @@ function TabBar({ children, style, ...props }: ViewProps) {
               </Text>
             </Animated.View>
             {/* Hairline between the tabs and the menu button. */}
-            <View
+            <Box
               pointerEvents="none"
               style={[styles.divider, { right: BAR_PADDING + buttonWidth, backgroundColor: theme.separator }]}
             />
@@ -272,34 +300,34 @@ function TabBar({ children, style, ...props }: ViewProps) {
             <Pressable
               accessibilityLabel={open ? "Close menu" : "Open menu"}
               style={[styles.menuButton, { width: buttonWidth }]}
-              onPress={() => toggle(!open)}
+              onPress={() => {
+                Haptic.tap();
+                toggle(!open);
+              }}
             >
               <Animated.View style={chevronStyle}>
                 <Icon icon={ChevronsUpDown} size={24} color={open ? "systemBlue" : "systemGray"} />
               </Animated.View>
             </Pressable>
-          </BlurView>
-        </Animated.View>
+          </Box>
+        </Box>
         {/* Separate action button, detached from the pill. */}
-        <View style={[styles.shadow, styles.addShadow, Shadows.floating]}>
-          <BlurView
-            intensity={60}
-            tint={tint}
-            style={[styles.add, { borderColor: theme.separator }]}
-          >
+        <Box style={[styles.shadow, styles.addShadow]}>
+          <Blur style={styles.add}>
             <Pressable
               accessibilityLabel={create.label}
               style={styles.addPress}
               onPress={() => {
+                Haptic.tap();
                 if (open) toggle(false);
                 create.run();
               }}
             >
               <Icon icon={Plus} size={28} strokeWidth={2.5} />
             </Pressable>
-          </BlurView>
-        </View>
-      </View>
+          </Blur>
+        </Box>
+      </Box>
     </TabBarContext.Provider>
   );
 }
@@ -309,9 +337,9 @@ export default function PagesLayout() {
 
   return (
     <Tabs>
-      <View style={{ flex: 1, backgroundColor: theme.systemGroupedBackground }}>
+      <Box style={{ flex: 1, backgroundColor: theme.systemGroupedBackground }}>
         <TabSlot />
-      </View>
+      </Box>
       {/* TabList must stay a direct child of Tabs, so the pill is rendered through asChild. */}
       <TabList asChild>
         <TabBar>
@@ -341,12 +369,30 @@ const styles = StyleSheet.create({
     gap: TAB_BAR_GAP,
   },
   shadow: { borderRadius: 34 },
-  pill: {},
+  clip: {
+    flex: 1,
+    overflow: "hidden",
+    borderBottomLeftRadius: 34,
+    borderBottomRightRadius: 34,
+  },
+  card: { position: "absolute", top: OVERSHOOT_ROOM, left: 0, right: 0, height: TAB_BAR_HEIGHT + MENU_HEIGHT },
+  bottomEdge: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 34,
+    borderLeftWidth: StyleSheet.hairlineWidth,
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomLeftRadius: 34,
+    borderBottomRightRadius: 34,
+  },
   grabber: { alignSelf: "center", width: 36, height: 5, borderRadius: 2.5, marginTop: 6 },
   tabs: { position: "absolute", left: 0, right: 0, bottom: 0, height: TAB_BAR_HEIGHT },
   menu: {
     position: "absolute",
-    top: 0,
+    top: OVERSHOOT_ROOM,
     left: 0,
     right: 0,
     height: MENU_HEIGHT,
@@ -405,12 +451,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   addPress: { flex: 1, alignItems: "center", justifyContent: "center" },
-  bar: {
-    flex: 1,
-    overflow: "hidden",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 34,
-  },
+  bar: { flex: 1, borderRadius: 34 },
   bubble: {
     position: "absolute",
     top: 5,
@@ -420,8 +461,9 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
   },
   list: { height: TAB_BAR_HEIGHT, flexDirection: "row", alignItems: "center", paddingLeft: BAR_PADDING },
+  // Each tab's touch area is its whole slot, the full height of the bar.
   button: {
-    minHeight: 44,
+    height: TAB_BAR_HEIGHT,
     paddingHorizontal: 4,
     alignItems: "center",
     justifyContent: "center",

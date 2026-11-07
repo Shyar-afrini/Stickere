@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View, type GestureResponderEvent } from "react-native";
+import { StyleSheet, View, type GestureResponderEvent } from "react-native";
 
 import { useTheme } from "@/hooks/use-theme";
 
@@ -14,7 +14,7 @@ type SliderProps = {
   accessibilityLabel?: string;
 };
 
-/** Horizontal slider. Plain touch handling, so it needs no native module. */
+/** Fallback slider for web, drawn by hand. iOS and Android use their native sliders (`slider.ios.tsx`, `slider.android.tsx`). */
 export function Slider({ value, min, max, onChange, accessibilityLabel }: SliderProps) {
   const theme = useTheme();
   const [width, setWidth] = useState(0);
@@ -60,11 +60,8 @@ export function Slider({ value, min, max, onChange, accessibilityLabel }: Slider
           height: KNOB,
           borderRadius: KNOB / 2,
           backgroundColor: "#FFFFFF",
-          shadowColor: "#000",
-          shadowOpacity: 0.25,
-          shadowRadius: 3,
-          shadowOffset: { width: 0, height: 1 },
-          elevation: 3,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: theme.separator,
         }}
       />
     </View>

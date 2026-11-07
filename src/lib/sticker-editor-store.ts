@@ -49,6 +49,8 @@ export type EditorState = {
   outline: boolean;
   /** Thickness of that outline, in canvas points. */
   outlineWidth: number;
+  /** Color of that outline. */
+  outlineColor: string;
 };
 
 type Listener = () => void;
@@ -64,6 +66,8 @@ export class StickerEditorStore {
   private dragStart: Point | null = null;
   private resetPending = false;
   private strokeResetPending = false;
+  /** Operations taken back by `undo`, most recent last; any new edit clears it. */
+  private undone: Op[] = [];
   /** The stroke under the finger. The canvas draws it live; it joins `ops` on release. */
   activeStroke: Stroke | null = null;
 
@@ -81,6 +85,7 @@ export class StickerEditorStore {
       frame: "none",
       outline: false,
       outlineWidth: 12,
+      outlineColor: "#FFFFFF",
       ...saved,
       // Whatever was selected or being used when a draft was saved starts fresh.
       selectedId: null,
@@ -128,6 +133,7 @@ export class StickerEditorStore {
       "kind" | "id" | "color" | "scale" | "rotation" | "bold" | "outline" | "outlineColor" | "outlineWidth"
     > & Partial<Layer>) {
     const id = this.nextId++;
+    this.undone = [];
     this.set({
       ops: [
         ...this.state.ops,
@@ -151,12 +157,14 @@ export class StickerEditorStore {
   updateSelected(change: (layer: Layer) => Partial<Layer>) {
     const current = this.selected();
     if (!current) return;
+    this.undone = [];
     this.set({
       ops: this.state.ops.map((op) => (op === current ? { ...current, ...change(current) } : op)),
     });
   }
 
   removeSelected() {
+    this.undone = [];
     this.set({
       ops: this.state.ops.filter((op) => op.id !== this.state.selectedId),
       selectedId: null,
@@ -164,8 +172,21 @@ export class StickerEditorStore {
   }
 
   undo() {
+    const last = this.state.ops.at(-1);
+    if (!last) return;
+    this.undone.push(last);
     const ops = this.state.ops.slice(0, -1);
     this.set({ ops, selectedId: ops.some((op) => op.id === this.state.selectedId) ? this.state.selectedId : null });
+  }
+
+  get canRedo() {
+    return this.undone.length > 0;
+  }
+
+  redo() {
+    const op = this.undone.pop();
+    if (!op) return;
+    this.set({ ops: [...this.state.ops, op] });
   }
 
   // Touch handling ---------------------------------------------------------
@@ -219,6 +240,7 @@ export class StickerEditorStore {
     this.activeStroke = null;
     if (!stroke) return;
     this.strokeResetPending = true;
+    this.undone = [];
     this.set({ ops: [...this.state.ops, stroke] });
   }
 

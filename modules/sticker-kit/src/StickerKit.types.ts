@@ -13,6 +13,8 @@ export type WhatsAppPack = {
   /** file:// URI of the tray icon source (resized to 96×96 natively). */
   trayUri: string;
   stickers: StickerInput[];
+  /** Every sticker is a GIF, sent as an animated WebP. Only supported on iOS for now. */
+  animated?: boolean;
 };
 
 export type TelegramPack = {

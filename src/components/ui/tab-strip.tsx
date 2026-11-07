@@ -34,10 +34,7 @@ export function TabStrip<T extends string>({
               radius="full"
               style={{ backgroundColor: selected ? theme.systemBlue : theme.systemFill }}
             >
-              <Text
-                variant="subheadline"
-                style={{ color: selected ? "#fff" : theme.label, fontWeight: "600" }}
-              >
+              <Text variant="subheadline" weight="semibold" color={selected ? "onTint" : "label"}>
                 {tab.label}
               </Text>
             </Box>

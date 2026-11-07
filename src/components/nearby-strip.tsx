@@ -1,6 +1,7 @@
 import { Link } from "expo-router";
 
 import { HScroll, Image, Pressable, Text, VStack } from "@/components/ui";
+import { shortPlace } from "@/lib/location";
 import type { NearbySticker } from "@/lib/nearby";
 import { getStickerUri } from "@/lib/sticker-storage";
 
@@ -10,7 +11,7 @@ const SIZE = 84;
 export function NearbyStrip({ stickers }: { stickers: NearbySticker[] }) {
   if (stickers.length === 0) return null;
 
-  const place = stickers[0].locality ?? stickers[0].placeName;
+  const place = shortPlace(stickers[0].locality, stickers[0].placeName);
 
   return (
     <VStack

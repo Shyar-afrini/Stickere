@@ -6,12 +6,14 @@ import Animated, {
   FadeInDown,
   FadeOut,
   FadeOutDown,
+  ReduceMotion,
 } from "react-native-reanimated";
 
-import { Shadows } from "@/constants/theme";
+import { Duration, ListStagger } from "@/constants/motion";
 import { useTabBarInset } from "@/hooks/use-tab-bar-inset";
 import { useTheme } from "@/hooks/use-theme";
 
+import { Blur } from "./blur";
 import { Icon } from "./icon";
 import { Pressable } from "./pressable";
 import { Text } from "./text";
@@ -37,9 +39,16 @@ export function Fab({ actions }: { actions: FabAction[] }) {
     <>
       {open && (
         <Animated.View
-          entering={FadeIn.duration(150)}
-          exiting={FadeOut.duration(120)}
-          style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0, 0, 0, 0.3)" }]}
+          entering={FadeIn.duration(Duration.standard).reduceMotion(
+            ReduceMotion.System,
+          )}
+          exiting={FadeOut.duration(Duration.fast).reduceMotion(
+            ReduceMotion.System,
+          )}
+          style={[
+            StyleSheet.absoluteFill,
+            { backgroundColor: "rgba(0, 0, 0, 0.3)" },
+          ]}
         >
           <Pressable
             feedback="none"
@@ -64,32 +73,32 @@ export function Fab({ actions }: { actions: FabAction[] }) {
           actions.map((action, index) => (
             <Animated.View
               key={action.label}
-              entering={FadeInDown.duration(160).delay(index * 40)}
-              exiting={FadeOutDown.duration(100)}
+              entering={FadeInDown.duration(Duration.standard)
+                .delay(index * ListStagger)
+                .reduceMotion(ReduceMotion.System)}
+              exiting={FadeOutDown.duration(Duration.fast).reduceMotion(
+                ReduceMotion.System,
+              )}
             >
-              <Pressable
-                onPress={() => {
-                  setOpen(false);
-                  action.onPress();
-                }}
-                accessibilityRole="button"
-                style={[
-                  {
+              <Blur style={{ borderRadius: 22 }}>
+                <Pressable
+                  onPress={() => {
+                    setOpen(false);
+                    action.onPress();
+                  }}
+                  accessibilityRole="button"
+                  style={{
                     flexDirection: "row",
                     alignItems: "center",
                     gap: 8,
                     paddingVertical: 12,
                     paddingHorizontal: 16,
-                    borderRadius: 22,
-                    borderCurve: "continuous",
-                    backgroundColor: theme.secondarySystemGroupedBackground,
-                  },
-                  Shadows.popover,
-                ]}
-              >
-                <Icon icon={action.icon} size={18} color="systemBlue" />
-                <Text>{action.label}</Text>
-              </Pressable>
+                  }}
+                >
+                  <Icon icon={action.icon} size={18} color="systemBlue" />
+                  <Text>{action.label}</Text>
+                </Pressable>
+              </Blur>
             </Animated.View>
           ))}
 
@@ -98,17 +107,14 @@ export function Fab({ actions }: { actions: FabAction[] }) {
           accessibilityRole="button"
           accessibilityLabel={single ? actions[0].label : "Create"}
           onPress={() => (single ? actions[0].onPress() : setOpen(!open))}
-          style={[
-            {
-              width: 56,
-              height: 56,
-              borderRadius: 28,
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: theme.systemBlue,
-            },
-            Shadows.floating,
-          ]}
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: theme.systemBlue,
+          }}
         >
           <Animated.View
             style={{

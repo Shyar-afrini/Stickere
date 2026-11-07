@@ -2,25 +2,42 @@ import { and, isNotNull } from "drizzle-orm";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { Stack, useRouter } from "expo-router";
 import { MapPin } from "lucide-react-native";
-import { useEffect, useMemo, useState } from "react";
-import { BlurView } from "expo-blur";
-import { StyleSheet, View } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useWindowDimensions, View } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 
 import { StampMark } from "@/components/stamp";
-import { Box, EmptyState, HScroll, Icon, Image, Pressable, Screen, Text } from "@/components/ui";
-import { Shadows } from "@/constants/theme";
+import {
+  Box,
+  Drawer,
+  EmptyState,
+  Icon,
+  Image,
+  Pressable,
+  Screen,
+  Text,
+} from "@/components/ui";
 import { db } from "@/db";
 import { inOpenPack } from "@/db/filters";
 import { stickers, type Sticker } from "@/db/schema";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { TAB_BAR_SIDE_MARGIN, useTabBarInset } from "@/hooks/use-tab-bar-inset";
-import { useTheme } from "@/hooks/use-theme";
+import { shortPlace } from "@/lib/location";
 import { getStickerUri } from "@/lib/sticker-storage";
 
-type Spot = { key: string; latitude: number; longitude: number; stickers: Sticker[] };
+type Spot = {
+  key: string;
+  latitude: number;
+  longitude: number;
+  stickers: Sticker[];
+};
 
 const SHOWN = 3;
+/** Drawer: handle + header + one row of stickers when closed; at most this tall when open. */
+const CELL = 84;
+const PEEK_HEIGHT = 40 + 26 + CELL + 8 + 14;
+const OPEN_HEIGHT = 520;
+/** A touch that moves less than this (points) counts as a tap, not a map drag. */
+const TAP_SLOP = 10;
 const WIDTHS = [66, 54, 48];
 const PLACEMENT = [
   { x: 0, y: 0, rotate: "-4deg" },
@@ -51,37 +68,40 @@ function SpotMarker({ spot }: { spot: Spot }) {
   const extra = spot.stickers.length - SHOWN;
 
   return (
-    <View style={{ width: 120, height: 130 }}>
+    <Box style={{ width: 120, height: 130 }}>
       {shown.map((sticker, index) => (
-        <View
+        <Box
           key={sticker.id}
           style={{
             position: "absolute",
             left: PLACEMENT[index].x,
             top: PLACEMENT[index].y,
             transform: [{ rotate: PLACEMENT[index].rotate }],
-            shadowColor: "#000",
-            shadowOpacity: 0.25,
-            shadowRadius: 3,
-            shadowOffset: { width: 0, height: 2 },
           }}
         >
           <StampMark sticker={sticker} width={WIDTHS[index]} />
-        </View>
+        </Box>
       ))}
       {extra > 0 && (
         <Box
           center
           bg="systemBlue"
           radius="full"
-          style={{ position: "absolute", right: 0, bottom: 0, minWidth: 26, height: 26, paddingHorizontal: 6 }}
+          style={{
+            position: "absolute",
+            right: 0,
+            bottom: 0,
+            minWidth: 26,
+            height: 26,
+            paddingHorizontal: 6,
+          }}
         >
           <Text variant="caption1" weight="bold" color="onTint">
             +{extra}
           </Text>
         </Box>
       )}
-    </View>
+    </Box>
   );
 }
 
@@ -89,20 +109,29 @@ function SpotMarker({ spot }: { spot: Spot }) {
 export default function StickerMap() {
   const router = useRouter();
   const tabInset = useTabBarInset();
-  const theme = useTheme();
-  const scheme = useColorScheme();
+  const { height: windowHeight } = useWindowDimensions();
   const { data } = useLiveQuery(
     db
       .select()
       .from(stickers)
-      .where(and(inOpenPack(), isNotNull(stickers.latitude), isNotNull(stickers.longitude))),
+      .where(
+        and(
+          inOpenPack(),
+          isNotNull(stickers.latitude),
+          isNotNull(stickers.longitude),
+        ),
+      ),
   );
   const spots = useMemo(() => groupIntoSpots(data), [data]);
   const [selectedKey, setSelectedKey] = useState<string>();
+  const touchStart = useRef({ x: 0, y: 0 });
+  const [dismissing, setDismissing] = useState(false);
   const selected = spots.find((spot) => spot.key === selectedKey);
 
   // Custom markers are drawn once, then frozen: redrawing them every frame is slow on Android.
-  const signature = spots.map((spot) => `${spot.key}:${spot.stickers.map((s) => s.id)}`).join("|");
+  const signature = spots
+    .map((spot) => `${spot.key}:${spot.stickers.map((s) => s.id)}`)
+    .join("|");
   const [settled, setSettled] = useState("");
   const tracking = settled !== signature;
   useEffect(() => {
@@ -129,7 +158,7 @@ export default function StickerMap() {
   if (!region) {
     return (
       <Screen bg="systemGroupedBackground">
-        <Stack.Screen options={{ title: "Map" }} />
+        <Stack.Screen options={{ title: "" }} />
         <EmptyState
           icon={MapPin}
           title="No Places Yet"
@@ -141,87 +170,102 @@ export default function StickerMap() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ title: "Map" }} />
-      <MapView
+      <Stack.Screen options={{ title: "" }} />
+      {/* MapView's own onPress waits ~400 ms to rule out a double tap. Reading the touch here closes the
+          sheet the moment a finger lifts; a pin's onPress then re-selects if that is what was tapped. */}
+      <View
         style={{ flex: 1 }}
-        initialRegion={region}
-        onPress={() => setSelectedKey(undefined)}
-        showsPointsOfInterests={false}
+        onTouchStart={(event) => {
+          const { pageX, pageY } = event.nativeEvent;
+          touchStart.current = { x: pageX, y: pageY };
+        }}
+        onTouchEnd={(event) => {
+          const { pageX, pageY } = event.nativeEvent;
+          const moved = Math.hypot(
+            pageX - touchStart.current.x,
+            pageY - touchStart.current.y,
+          );
+          if (moved < TAP_SLOP && event.nativeEvent.touches.length === 0)
+            setDismissing(true);
+        }}
       >
-        {spots.map((spot) => (
-          <Marker
-            key={spot.key}
-            coordinate={spot}
-            anchor={{ x: 0.3, y: 0.3 }}
-            tracksViewChanges={tracking}
-            onPress={(event) => {
-              event.stopPropagation();
-              setSelectedKey(spot.key);
-            }}
-          >
-            <SpotMarker spot={spot} />
-          </Marker>
-        ))}
-      </MapView>
+        <MapView
+          style={{ flex: 1 }}
+          initialRegion={region}
+          showsPointsOfInterests={false}
+        >
+          {spots.map((spot) => (
+            <Marker
+              key={spot.key}
+              coordinate={spot}
+              anchor={{ x: 0.3, y: 0.3 }}
+              tracksViewChanges={tracking}
+              onPress={(event) => {
+                event.stopPropagation();
+                setDismissing(false);
+                setSelectedKey(spot.key);
+              }}
+            >
+              <SpotMarker spot={spot} />
+            </Marker>
+          ))}
+        </MapView>
+      </View>
 
       {selected && (
-        // Same frosted glass as the tab bar, so the stickers sit in a card instead of floating on the map.
-        <View
-          style={[
-            {
-              position: "absolute",
-              left: TAB_BAR_SIDE_MARGIN,
-              right: TAB_BAR_SIDE_MARGIN,
-              bottom: tabInset + 8,
-              borderRadius: 28,
-            },
-            Shadows.floating,
-          ]}
-        >
-          <BlurView
-            intensity={60}
-            tint={scheme === "dark" ? "systemThickMaterialDark" : "systemThickMaterialLight"}
-            style={{
-              borderRadius: 28,
-              overflow: "hidden",
-              borderWidth: StyleSheet.hairlineWidth,
-              borderColor: theme.separator,
-              paddingVertical: 14,
-              gap: 10,
-            }}
-          >
+        // Peeks above the tab bar with the first row; drag or tap it to open every sticker of the place.
+        <Drawer
+          key={selected.key}
+          visible={!dismissing}
+          onClosed={() => {
+            setSelectedKey(undefined);
+            setDismissing(false);
+          }}
+          side={TAB_BAR_SIDE_MARGIN}
+          bottom={tabInset + 8}
+          peekHeight={PEEK_HEIGHT}
+          openHeight={Math.min(windowHeight * 0.6, OPEN_HEIGHT)}
+          header={
             <Box row align="center" gap="sm" style={{ paddingHorizontal: 18 }}>
               <Icon icon={MapPin} size={16} color="secondaryLabel" />
-              <Text variant="subheadline" weight="semibold" style={{ flex: 1 }} numberOfLines={1}>
-                {selected.stickers[0].placeName ?? selected.stickers[0].locality ?? "Saved place"}
+              <Text
+                variant="subheadline"
+                weight="semibold"
+                style={{ flex: 1 }}
+                numberOfLines={1}
+              >
+                {shortPlace(selected.stickers[0].placeName, selected.stickers[0].locality) ??
+                  "Saved place"}
               </Text>
               <Text variant="footnote" color="secondaryLabel">
-                {selected.stickers.length} {selected.stickers.length === 1 ? "sticker" : "stickers"}
+                {selected.stickers.length}{" "}
+                {selected.stickers.length === 1 ? "sticker" : "stickers"}
               </Text>
             </Box>
-            <HScroll>
-              {selected.stickers.map((sticker) => (
-                <Pressable
-                  key={sticker.id}
-                  feedback="scale"
-                  accessibilityLabel={sticker.name}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/(pages)/(packs)/sticker",
-                      params: { stickerId: sticker.id },
-                    })
-                  }
-                >
-                  <Image
-                    source={{ uri: getStickerUri(sticker.path) }}
-                    contentFit="contain"
-                    style={{ width: 84, height: 84 }}
-                  />
-                </Pressable>
-              ))}
-            </HScroll>
-          </BlurView>
-        </View>
+          }
+        >
+          <Box row style={{ flexWrap: "wrap" }}>
+            {selected.stickers.map((sticker) => (
+              <Pressable
+                key={sticker.id}
+                feedback="scale"
+                accessibilityLabel={sticker.name}
+                onPress={() =>
+                  router.push({
+                    pathname: "/(pages)/(packs)/sticker",
+                    params: { stickerId: sticker.id },
+                  })
+                }
+              >
+                <Image
+                  source={{ uri: getStickerUri(sticker.path) }}
+                  contentFit="contain"
+                  style={{ width: CELL, height: CELL, margin: 4 }}
+                />
+              </Pressable>
+            ))}
+          </Box>
+        </Drawer>
       )}
     </Screen>
   );

@@ -1,12 +1,14 @@
 import { useId, useState, type ReactNode } from "react";
-import { PanResponder, View } from "react-native";
+import { PanResponder } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 import Svg, { Circle, Defs, Mask, Rect } from "react-native-svg";
 
-import { Image, Text } from "@/components/ui";
+import { Box, Image, Text } from "@/components/ui";
+import { Springs } from "@/constants/motion";
 import { Colors } from "@/constants/theme";
 import type { Sticker } from "@/db/schema";
+import { placeLabel } from "@/lib/location";
 import { getStickerUri } from "@/lib/sticker-storage";
 
 // Pastel paper, an iOS system color panel for the artwork and a dark ink for the caption.
@@ -51,7 +53,7 @@ export function StampFrame({
   };
 
   return (
-    <View style={{ width, height }}>
+    <Box style={{ width, height }}>
       <Svg width={width} height={height} style={{ position: "absolute" }}>
         <Defs>
           <Mask id={maskId} x={0} y={0} width={width} height={height}>
@@ -69,7 +71,7 @@ export function StampFrame({
         <Rect width={width} height={height} fill={paper} mask={`url(#${maskId})`} />
       </Svg>
       {children}
-    </View>
+    </Box>
   );
 }
 
@@ -80,8 +82,8 @@ export function Stamp({ sticker, width }: { sticker: Sticker; width: number }) {
 
   return (
     <StampFrame width={width} height={height} paper={palette.paper}>
-      <View style={{ flex: 1, padding: MARGIN }}>
-        <View
+      <Box style={{ flex: 1, padding: MARGIN }}>
+        <Box
           style={{
             flex: 1,
             borderRadius: 16,
@@ -97,13 +99,13 @@ export function Stamp({ sticker, width }: { sticker: Sticker; width: number }) {
             contentFit="contain"
             style={{ width: "100%", height: "100%" }}
           />
-        </View>
-        <View style={{ height: CAPTION, alignItems: "center", justifyContent: "center", paddingHorizontal: 8 }}>
+        </Box>
+        <Box style={{ height: CAPTION, alignItems: "center", justifyContent: "center", paddingHorizontal: 8 }}>
           <Text variant="title2" weight="bold" numberOfLines={1} style={{ color: palette.ink }}>
             {[sticker.name, ...sticker.emojis].join(" ")}
           </Text>
-        </View>
-      </View>
+        </Box>
+      </Box>
     </StampFrame>
   );
 }
@@ -115,7 +117,7 @@ export function StampMark({ sticker, width }: { sticker: Sticker; width: number 
 
   return (
     <StampFrame width={width} height={Math.round(width * 1.2)} paper={palette.paper} hole={2.5}>
-      <View
+      <Box
         style={{
           flex: 1,
           margin,
@@ -130,7 +132,7 @@ export function StampMark({ sticker, width }: { sticker: Sticker; width: number 
           contentFit="contain"
           style={{ width: "100%", height: "100%" }}
         />
-      </View>
+      </Box>
     </StampFrame>
   );
 }
@@ -156,14 +158,14 @@ export function StampBack({ sticker, width, packName, tags }: BackProps) {
   const palette = stampPalette(sticker.id);
   const height = Math.round(width * 1.22);
   const located = sticker.latitude != null && sticker.longitude != null;
-  const place = [sticker.placeName, sticker.locality, sticker.country].filter(Boolean).join(", ");
+  const place = placeLabel(sticker);
   const made = sticker.createdAt.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
   const qrSize = Math.min(Math.round(width * 0.46), 150);
 
   return (
     <StampFrame width={width} height={height} paper={palette.paper}>
-      <View style={{ flex: 1, padding: MARGIN, alignItems: "center", justifyContent: "space-between" }}>
-        <View style={{ alignItems: "center", gap: 2 }}>
+      <Box style={{ flex: 1, padding: MARGIN, alignItems: "center", justifyContent: "space-between" }}>
+        <Box style={{ alignItems: "center", gap: 2 }}>
           {packName ? (
             <Text variant="caption1" weight="bold" style={{ color: palette.panel, letterSpacing: 1.2 }}>
               {packName.toUpperCase()}
@@ -172,18 +174,18 @@ export function StampBack({ sticker, width, packName, tags }: BackProps) {
           <Text variant="title3" weight="bold" numberOfLines={1} style={{ color: palette.ink }}>
             {sticker.name}
           </Text>
-        </View>
+        </Box>
 
-        <View style={{ alignItems: "center", gap: 8 }}>
-          <View style={{ padding: 8, borderRadius: 14, backgroundColor: "#FFFFFF" }}>
+        <Box style={{ alignItems: "center", gap: 8 }}>
+          <Box style={{ padding: 8, borderRadius: 14, backgroundColor: "#FFFFFF" }}>
             <QRCode value={qrValue({ sticker, tags })} size={qrSize} color="#111111" backgroundColor="#FFFFFF" />
-          </View>
+          </Box>
           <Text variant="caption2" align="center" style={{ color: palette.ink, opacity: 0.8 }}>
             {located ? "Scan to open this place in Maps" : "Scan to read this sticker’s details"}
           </Text>
-        </View>
+        </Box>
 
-        <View style={{ alignItems: "center", gap: 2, paddingHorizontal: 6 }}>
+        <Box style={{ alignItems: "center", gap: 2, paddingHorizontal: 6 }}>
           {place ? (
             <Text variant="footnote" weight="semibold" align="center" numberOfLines={2} style={{ color: palette.ink }}>
               {place}
@@ -197,8 +199,8 @@ export function StampBack({ sticker, width, packName, tags }: BackProps) {
               {tags.map((tag) => `#${tag}`).join("  ")}
             </Text>
           ) : null}
-        </View>
-      </View>
+        </Box>
+      </Box>
     </StampFrame>
   );
 }
@@ -219,7 +221,7 @@ export function FlipCard({ front, back }: { front: ReactNode; back: ReactNode })
   const [responder] = useState(() => {
     let start = 0;
     let locked = false;
-    const settle = (target: number) => turn.set(withSpring(target, { damping: 16, stiffness: 140, mass: 0.9 }));
+    const settle = (target: number) => turn.set(withSpring(target, Springs.settle));
 
     return PanResponder.create({
       onStartShouldSetPanResponder: () => false,
@@ -265,9 +267,9 @@ export function FlipCard({ front, back }: { front: ReactNode; back: ReactNode })
   const backStyle = useAnimatedStyle(faceStyle(180));
 
   return (
-    <View {...responder.panHandlers}>
+    <Box {...responder.panHandlers}>
       <Animated.View style={[{ backfaceVisibility: "hidden" }, frontStyle]}>{front}</Animated.View>
       <Animated.View style={[{ position: "absolute", backfaceVisibility: "hidden" }, backStyle]}>{back}</Animated.View>
-    </View>
+    </Box>
   );
 }

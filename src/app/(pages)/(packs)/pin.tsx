@@ -52,7 +52,8 @@ export default function PinSetup() {
 
   return (
     <Screen center bg="systemGroupedBackground" style={{ paddingTop: headerInset }}>
-      <Stack.Screen options={{ title: changing ? "Change PIN" : "Set PIN" }} />
+      {/* The PIN pad names the step itself, so the bar has no title. */}
+      <Stack.Screen options={{ title: "" }} />
       <PinPad
         key={step}
         title={titles[step]}

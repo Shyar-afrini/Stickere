@@ -1,6 +1,14 @@
-import { useEffect, useRef, useState, type ComponentRef, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ComponentRef,
+  type ReactNode,
+} from "react";
 import { Animated, PanResponder, View } from "react-native";
+import { useReducedMotion } from "react-native-reanimated";
 
+import { Haptic } from "@/lib/haptics";
 import type { ReorderController } from "@/lib/reorder-controller";
 
 type Handlers = { onLongPress: () => void; onPressOut: () => void };
@@ -45,15 +53,19 @@ export function ReorderCell({
         if (!controller.isArmed(id)) controller.arm(id);
       },
       onPanResponderTerminationRequest: () => false,
-      onPanResponderMove: (_, gesture) => controller.move(gesture.dx, gesture.dy),
+      onPanResponderMove: (_, gesture) =>
+        controller.move(gesture.dx, gesture.dy),
       onPanResponderRelease: () => controller.end(),
       onPanResponderTerminate: () => controller.end(),
     }),
   );
 
+  // With Reduce Motion on, cards in edit mode stay still instead of jiggling.
+  const reduceMotion = useReducedMotion();
+  const jiggle = reduceMotion ? 0 : JIGGLE_DEGREES;
   const rotate = controller.tilt.interpolate({
     inputRange: [-1, 1],
-    outputRange: [`${-JIGGLE_DEGREES}deg`, `${JIGGLE_DEGREES}deg`],
+    outputRange: [`${-jiggle}deg`, `${jiggle}deg`],
   });
 
   return (
@@ -61,21 +73,17 @@ export function ReorderCell({
       ref={viewRef}
       collapsable={false}
       {...responder.panHandlers}
-      style={
-        active
-          ? {
-              zIndex: 10,
-              transform: [...controller.translate.getTranslateTransform(), { scale: 1.05 }],
-              shadowColor: "#000",
-              shadowOpacity: 0.25,
-              shadowRadius: 12,
-              shadowOffset: { width: 0, height: 6 },
-            }
-          : { transform: [{ rotate }] }
-      }
+      style={{
+        zIndex: active ? 10 : 0,
+        transform: [
+          ...controller.shift(id).getTranslateTransform(),
+          active ? { scale: 1.05 } : { rotate },
+        ],
+      }}
     >
       {children({
         onLongPress: () => {
+          Haptic.dragStart();
           onEnterEditing();
           controller.arm(id);
         },

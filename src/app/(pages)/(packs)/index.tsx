@@ -2,13 +2,13 @@ import { NearbyStrip } from "@/components/nearby-strip";
 import { PackCard } from "@/components/pack-card";
 import { EmptyState, Grid, HeaderButton, ReorderCell, Screen } from "@/components/ui";
 import { reorderPacks } from "@/db/mutations";
-import { useReorder } from "@/hooks/use-reorder";
+import { useHeaderInset } from "@/hooks/use-header-inset";
 import { useNearbyStickers } from "@/hooks/use-nearby-stickers";
 import { usePacks } from "@/hooks/use-packs";
-import { useHeaderInset } from "@/hooks/use-header-inset";
+import { useReorder } from "@/hooks/use-reorder";
 import { useTabBarInset } from "@/hooks/use-tab-bar-inset";
 import { Stack, useRouter } from "expo-router";
-import { Bell, Layers, Sparkles } from "lucide-react-native";
+import { Bell, Layers } from "lucide-react-native";
 
 export default function Packs() {
   const router = useRouter();
@@ -41,11 +41,6 @@ export default function Packs() {
                 icon={Bell}
                 accessibilityLabel="Reminders"
                 onPress={() => router.push("/(pages)/(packs)/reminders")}
-              />
-              <HeaderButton
-                icon={Sparkles}
-                accessibilityLabel="Sticker ideas from your trips"
-                onPress={() => router.push("/(pages)/(packs)/suggestions")}
               />
             </>
           ),

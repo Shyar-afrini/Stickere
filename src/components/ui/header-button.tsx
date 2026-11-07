@@ -1,14 +1,12 @@
 import type { LucideIcon } from "lucide-react-native";
 
-import { BlurView } from "expo-blur";
 import { StyleSheet, View } from "react-native";
 
-import { Shadows } from "@/constants/theme";
-import { useColorScheme } from "@/hooks/use-color-scheme";
-import { useTheme } from "@/hooks/use-theme";
 
+import { Blur } from "./blur";
 import { Icon } from "./icon";
 import { Pressable } from "./pressable";
+import { Spinner } from "./spinner";
 import { Text } from "./text";
 
 type Props = {
@@ -18,6 +16,8 @@ type Props = {
   bold?: boolean;
   disabled?: boolean;
   destructive?: boolean;
+  /** Spinner in place of the label or icon, and no presses, while the action runs. */
+  loading?: boolean;
   accessibilityLabel?: string;
 };
 
@@ -32,40 +32,38 @@ export function HeaderButton({
   bold,
   disabled,
   destructive,
+  loading = false,
   accessibilityLabel,
 }: Props) {
-  const theme = useTheme();
-  const scheme = useColorScheme();
   // Disabled turns the icon and text grey instead of fading the whole button.
   const color = disabled ? "systemGray2" : destructive ? "systemRed" : label ? "systemBlue" : "label";
 
   return (
-    <View style={[styles.shadow, Shadows.floating]}>
-      <BlurView
-        intensity={60}
-        tint={scheme === "dark" ? "systemThickMaterialDark" : "systemThickMaterialLight"}
-        style={[
-          styles.glass,
-          label ? styles.pill : styles.round,
-          { borderColor: theme.separator },
-        ]}
-      >
+    <View style={styles.shadow}>
+      <Blur style={[styles.glass, label ? styles.pill : styles.round]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={accessibilityLabel ?? label}
-          disabled={disabled}
+          accessibilityState={{ disabled: disabled || loading, busy: loading }}
+          disabled={disabled || loading}
           onPress={onPress}
           hitSlop={8}
           style={styles.press}
         >
-          {icon && <Icon icon={icon} size={20} color={color} />}
-          {label && (
-            <Text color={color} weight={bold ? "semibold" : undefined}>
-              {label}
-            </Text>
+          {loading ? (
+            <Spinner />
+          ) : (
+            <>
+              {icon && <Icon icon={icon} size={20} color={color} />}
+              {label && (
+                <Text color={color} weight={bold ? "semibold" : undefined}>
+                  {label}
+                </Text>
+              )}
+            </>
           )}
         </Pressable>
-      </BlurView>
+      </Blur>
     </View>
   );
 }

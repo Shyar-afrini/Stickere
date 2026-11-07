@@ -50,9 +50,7 @@ export function StickerMasonry({ reorder, onStickerPress }: Props) {
                     onPress={() => onStickerPress?.(sticker)}
                     {...handlers}
                   >
-                    {/* No background on the wrapper: iOS then casts the shadow from
-                        the sticker's alpha, so it follows the cut-out outline. */}
-                    <Box shadow="sticker">
+                    <Box>
                       <Image
                         source={{ uri: getStickerUri(sticker.path) }}
                         style={{ aspectRatio: sticker.width / sticker.height }}

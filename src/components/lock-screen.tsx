@@ -1,9 +1,8 @@
 import { Lock, ScanFace } from "lucide-react-native";
 import { useEffect, useState } from "react";
-import { Modal } from "react-native";
 
 import { PinPad } from "@/components/pin-pad";
-import { Box, Button, Icon, Pressable, Screen } from "@/components/ui";
+import { Box, Button, Icon, Modal, Pressable, Screen } from "@/components/ui";
 import {
   authenticateWithBiometrics,
   biometricsAvailable,
@@ -79,7 +78,7 @@ export function LockScreen({ title, onUnlock, onCancel }: Props) {
 /** Lock screen presented over everything, including native modals. */
 export function LockModal({ visible, ...props }: Props & { visible: boolean }) {
   return (
-    <Modal visible={visible} animationType="fade" statusBarTranslucent onRequestClose={props.onCancel}>
+    <Modal visible={visible} onRequestClose={props.onCancel}>
       <LockScreen {...props} />
     </Modal>
   );

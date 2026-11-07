@@ -1,7 +1,22 @@
 import { Stack } from "expo-router";
+import type { NativeStackNavigationOptions } from "expo-router";
+
+import { SHEET_HEIGHT } from "@/constants/sheet";
 
 import { AppHeader } from "@/components/app-header";
 import { useTheme } from "@/hooks/use-theme";
+
+// A bottom sheet on both platforms; Android draws it with its own sheet behaviour.
+const SHEET: NativeStackNavigationOptions = {
+  presentation: "formSheet",
+  headerShown: false,
+  // Pages only go back with the arrow, but a sheet closes the standard way: swipe it down (or Cancel,
+  // or Android's back). Unsaved changes ask first (`useConfirmDiscard`).
+  gestureEnabled: true,
+  sheetAllowedDetents: [SHEET_HEIGHT],
+  sheetGrabberVisible: true,
+  sheetCornerRadius: 24,
+};
 
 export default function PacksLayout() {
   const theme = useTheme();
@@ -31,20 +46,18 @@ export default function PacksLayout() {
         }}
       />
       <Stack.Screen name="[id]" options={{ title: "" }} />
-      <Stack.Screen name="map" options={{ title: "Map" }} />
+      <Stack.Screen name="map" options={{ title: "" }} />
       <Stack.Screen name="sticker" options={{ title: "" }} />
       <Stack.Screen name="settings" options={{ title: "Settings" }} />
-      <Stack.Screen name="pin" options={{ title: "PIN" }} />
+      <Stack.Screen name="pin" options={{ title: "" }} />
       <Stack.Screen
         name="new-pack"
-        options={{ presentation: "modal", title: "New Pack" }}
+        options={{ ...SHEET, title: "New Pack" }}
       />
+      <Stack.Screen name="pack-page" options={{ title: "New Pack" }} />
       <Stack.Screen name="drafts" options={{ title: "Drafts" }} />
-      <Stack.Screen name="edit-image" options={{ title: "Edit" }} />
-      <Stack.Screen
-        name="new-sticker"
-        options={{ title: "New Sticker" }}
-      />
+      <Stack.Screen name="edit-image" options={{ title: "" }} />
+      <Stack.Screen name="new-sticker" options={{ ...SHEET, title: "New Sticker" }} />
     </Stack>
   );
 }

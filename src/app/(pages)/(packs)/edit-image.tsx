@@ -15,11 +15,12 @@ import {
   Trash2,
   Type,
   Save,
+  Redo2,
   Undo2,
   type LucideIcon,
 } from "lucide-react-native";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { Keyboard, View, useWindowDimensions } from "react-native";
+import { Keyboard, useWindowDimensions } from "react-native";
 
 import { OUTLINE_MAX, StickerCanvas, exportRect } from "@/components/sticker-canvas";
 import {
@@ -88,7 +89,7 @@ function ColorRow({ value, onChange }: { value: string; onChange: (color: string
     <HScroll gap="sm">
       {COLORS.map((color) => (
         <Pressable key={color} accessibilityLabel={`Color ${color}`} onPress={() => onChange(color)}>
-          <View
+          <Box
             style={{
               width: 30,
               height: 30,
@@ -123,7 +124,7 @@ function BrushRow({ value, onChange }: { value: number; onChange: (size: number)
             borderColor: theme.systemBlue,
           }}
         >
-          <View style={{ width: size / 1.5 + 4, height: size / 1.5 + 4, borderRadius: size, backgroundColor: theme.systemGray }} />
+          <Box style={{ width: size / 1.5 + 4, height: size / 1.5 + 4, borderRadius: size, backgroundColor: theme.systemGray }} />
         </Pressable>
       ))}
     </HStack>
@@ -195,7 +196,7 @@ export default function EditImage() {
     timer.current = setTimeout(persist, 600);
     return () => clearTimeout(timer.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.ops, state.frame, state.outline, state.outlineWidth, state.baseUri]);
+  }, [state.ops, state.frame, state.outline, state.outlineWidth, state.outlineColor, state.baseUri]);
 
   const cutOut = state.baseUri !== original.uri;
   const selected = store.selected();
@@ -282,11 +283,14 @@ export default function EditImage() {
     <Screen bg="systemGroupedBackground">
       <Stack.Screen
         options={{
-          title: "Edit",
+          title: "",
           headerRight: () => (
             <>
               {state.ops.length > 0 && (
                 <HeaderButton icon={Undo2} accessibilityLabel="Undo" onPress={() => store.undo()} />
+              )}
+              {store.canRedo && (
+                <HeaderButton icon={Redo2} accessibilityLabel="Redo" onPress={() => store.redo()} />
               )}
               <HeaderButton
                 icon={Save}
@@ -350,7 +354,7 @@ export default function EditImage() {
               trailing={<Toggle value={cutOut} onValueChange={toggleCutOut} disabled={processing} />}
             />
             <ListRow
-              label="White Outline"
+              label="Outline"
               trailing={
                 <Toggle value={state.outline} onValueChange={(outline) => store.set({ outline })} />
               }
@@ -364,6 +368,12 @@ export default function EditImage() {
                   max={OUTLINE_MAX}
                   onChange={(outlineWidth) => store.set({ outlineWidth })}
                 />
+                <Box py="sm">
+                  <ColorRow
+                    value={state.outlineColor}
+                    onChange={(outlineColor) => store.set({ outlineColor })}
+                  />
+                </Box>
               </Box>
             )}
           </ListSection>

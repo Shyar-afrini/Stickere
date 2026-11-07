@@ -11,6 +11,9 @@ Pod::Spec.new do |s|
   s.static_framework = true
 
   s.dependency 'ExpoModulesCore'
+  # WhatsApp only accepts WebP stickers, and iOS has no WebP encoder of its own.
+  s.dependency 'libwebp'
+  s.dependency 'libwebp/mux'
 
   s.source_files = "**/*.{h,m,swift}"
   s.pod_target_xcconfig = {

@@ -7,6 +7,8 @@ export const packs = sqliteTable("packs", {
   name: text("name").notNull(),
   author: text("author"),
   description: text("description"),
+  // Image chosen as the pack's cover, stored like sticker images; empty shows the newest stickers.
+  coverPath: text("cover_path"),
   // Locked packs hide their contents until unlocked with the PIN or Face ID.
   // Order in the packs list; only changes when the user reorders.
   position: integer("position").notNull().default(0),

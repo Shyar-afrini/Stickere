@@ -1,6 +1,5 @@
 import { Delete } from "lucide-react-native";
 import { useState, type ReactNode } from "react";
-import { View } from "react-native";
 
 import { Box, Icon, Pressable, Text } from "@/components/ui";
 import { useTheme } from "@/hooks/use-theme";
@@ -57,7 +56,7 @@ export function PinPad({ title, subtitle, error, onComplete, corner }: Props) {
 
       <Box row gap="lg">
         {Array.from({ length: PIN_LENGTH }, (_, index) => (
-          <View
+          <Box
             key={index}
             style={{
               width: 14,
@@ -77,9 +76,9 @@ export function PinPad({ title, subtitle, error, onComplete, corner }: Props) {
             {row.map((key) => {
               if (key === "corner") {
                 return (
-                  <View key={key} style={{ width: KEY, height: KEY }}>
+                  <Box key={key} style={{ width: KEY, height: KEY }}>
                     {corner}
-                  </View>
+                  </Box>
                 );
               }
               const isDelete = key === "delete";

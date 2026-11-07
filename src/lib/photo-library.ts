@@ -3,7 +3,7 @@ import { File, Paths } from "expo-file-system";
 import * as MediaLibrary from "expo-media-library";
 
 import { clusterPhotos, type LocatedPhoto } from "@/lib/trip-clusters";
-import type { StickerLocation } from "@/lib/location";
+import { placeParts, shortPlace, type StickerLocation } from "@/lib/location";
 
 const RECENT_PHOTO_COUNT = 300;
 const MAX_TRIPS = 6;
@@ -62,11 +62,7 @@ async function mapLimit<T, R>(
 async function describeTrip(latitude: number, longitude: number) {
   try {
     const [place] = await Location.reverseGeocodeAsync({ latitude, longitude });
-    return {
-      placeName: place?.name ?? place?.street ?? null,
-      locality: place?.city ?? place?.subregion ?? null,
-      country: place?.country ?? null,
-    };
+    return placeParts(place);
   } catch {
     return { placeName: null, locality: null, country: null };
   }
@@ -129,7 +125,7 @@ export async function loadTripSuggestions(
 
     const place = await describeTrip(trip.latitude, trip.longitude);
     const label =
-      [place.locality ?? place.placeName, place.country]
+      [shortPlace(place.locality, place.placeName), place.country]
         .filter(Boolean)
         .join(", ") || "Unknown place";
 

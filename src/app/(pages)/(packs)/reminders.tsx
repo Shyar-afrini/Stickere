@@ -1,6 +1,6 @@
+import { Spacing } from "@/constants/theme";
 import { useHeaderInset } from "@/hooks/use-header-inset";
 import { useTabBarInset } from "@/hooks/use-tab-bar-inset";
-import { Linking } from "react-native";
 import { useState } from "react";
 
 import {
@@ -16,6 +16,7 @@ import {
   enableArrivalReminders,
 } from "@/lib/geofence";
 import { getArrivalReminders } from "@/lib/settings";
+import { openAppSettings } from "@/lib/platform";
 
 export default function Reminders() {
   const tabInset = useTabBarInset();
@@ -44,7 +45,7 @@ export default function Reminders() {
             : "Allow notifications in Settings to get reminders.",
           [
             { text: "Cancel", style: "cancel" },
-            { text: "Open Settings", onPress: () => Linking.openSettings() },
+            { text: "Open Settings", onPress: () => openAppSettings() },
           ],
         );
       }
@@ -55,7 +56,7 @@ export default function Reminders() {
 
   return (
     <Screen>
-      <ScrollView gap="xl" py="lg" contentContainerStyle={{ paddingTop: headerInset + 16, paddingBottom: tabInset }}>
+      <ScrollView gap="xl" py="lg" contentContainerStyle={{ paddingTop: headerInset + Spacing.sm, paddingBottom: tabInset }}>
         <ListSection footer="Get a notification when you arrive at a place where you saved stickers. Up to 20 places are watched at a time, nearest first. On Android, reminders can pause if the system closes the app.">
           <ListRow
             label="Remind Me at Saved Places"

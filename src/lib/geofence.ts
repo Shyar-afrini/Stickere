@@ -1,12 +1,14 @@
 import * as Location from "expo-location";
 import * as Notifications from "expo-notifications";
 import * as TaskManager from "expo-task-manager";
+import Storage from "expo-sqlite/kv-store";
 import { and, between, isNotNull } from "drizzle-orm";
 
 import { db } from "@/db";
 import { inOpenPack } from "@/db/filters";
 import { stickers } from "@/db/schema";
 import { boundingBox, distanceMeters } from "@/lib/geo";
+import { shortPlace } from "@/lib/location";
 import { getArrivalReminders, setArrivalReminders } from "@/lib/settings";
 
 const GEOFENCE_TASK = "stickere-arrival-reminders";
@@ -15,6 +17,23 @@ const GEOFENCE_TASK = "stickere-arrival-reminders";
 const MAX_REGIONS = 20;
 const MIN_REGION_METERS = 100;
 const MAX_REGION_METERS = 1000;
+
+// iOS reports "entered" for every region you are already inside whenever the regions are registered, so
+// a place only notifies once per cooldown, and regions are only registered again when they changed.
+const COOLDOWN_MS = 6 * 60 * 60 * 1000;
+const NOTIFIED_KEY = "geofenceNotified";
+const REGIONS_KEY = "geofenceRegions";
+
+function readNotified(): Record<string, number> {
+  try {
+    return JSON.parse(Storage.getItemSync(NOTIFIED_KEY) ?? "{}");
+  } catch {
+    return {};
+  }
+}
+
+const writeNotified = (notified: Record<string, number>) =>
+  Storage.setItemSync(NOTIFIED_KEY, JSON.stringify(notified));
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -34,7 +53,10 @@ TaskManager.defineTask<{
   if (error || !data || data.eventType !== Location.GeofencingEventType.Enter)
     return;
 
-  const { latitude, longitude, radius } = data.region;
+  const { latitude, longitude, radius, identifier } = data.region;
+  const notified = readNotified();
+  const key = identifier ?? `${latitude},${longitude}`;
+  if (Date.now() - (notified[key] ?? 0) < COOLDOWN_MS) return;
   const box = boundingBox({ latitude, longitude }, radius);
   const here = db
     .select()
@@ -51,7 +73,8 @@ TaskManager.defineTask<{
     .all();
   if (here.length === 0) return;
 
-  const place = here[0].locality ?? here[0].placeName ?? "a place you saved";
+  writeNotified({ ...notified, [key]: Date.now() });
+  const place = shortPlace(here[0].locality, here[0].placeName) ?? "a place you saved";
   await Notifications.scheduleNotificationAsync({
     content: {
       title: `You’re near ${place}`,
@@ -123,7 +146,27 @@ export async function syncGeofences() {
       if (started) await Location.stopGeofencingAsync(GEOFENCE_TASK);
       return;
     }
+
+    // Nothing moved: leave the monitoring alone, so iOS doesn't report every place you are in again.
+    const signature = JSON.stringify(
+      regions.map((region) => [region.identifier, region.radius]).sort(),
+    );
+    if (started && Storage.getItemSync(REGIONS_KEY) === signature) return;
+
+    // A place you are standing in right now is not news: start its cooldown.
+    const position = await Location.getLastKnownPositionAsync();
+    if (position) {
+      const notified = readNotified();
+      for (const region of regions) {
+        if (distanceMeters(position.coords, region) <= region.radius) {
+          notified[region.identifier!] ??= Date.now();
+        }
+      }
+      writeNotified(notified);
+    }
+
     await Location.startGeofencingAsync(GEOFENCE_TASK, regions);
+    Storage.setItemSync(REGIONS_KEY, signature);
   } catch {
     // Missing permissions or an unsupported device: reminders simply stay off.
   }

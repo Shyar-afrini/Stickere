@@ -12,6 +12,9 @@ export function TextField({ multiline, style, ...props }: TextInputProps) {
       multiline={multiline}
       placeholderTextColor={theme.tertiaryLabel}
       selectionColor={theme.systemBlue}
+      cursorColor={theme.systemBlue}
+      // The field sits inside a list row, which is its container on both platforms, so no underline.
+      underlineColorAndroid="transparent"
       style={[
         Typography.body,
         {

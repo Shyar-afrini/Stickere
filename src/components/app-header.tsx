@@ -1,14 +1,10 @@
 import type { NativeStackHeaderProps } from "expo-router";
-import { BlurView } from "expo-blur";
 import { ChevronLeft } from "lucide-react-native";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { HeaderButton, Text } from "@/components/ui";
-import { Shadows } from "@/constants/theme";
-import { useColorScheme } from "@/hooks/use-color-scheme";
+import { Blur, Box, HeaderButton, Text } from "@/components/ui";
 import { HEADER_BAR } from "@/hooks/use-header-inset";
-import { useTheme } from "@/hooks/use-theme";
 
 /**
  * Navigation bar shared by every stack screen. The native header would wrap
@@ -17,8 +13,6 @@ import { useTheme } from "@/hooks/use-theme";
  */
 export function AppHeader({ options, back, navigation }: NativeStackHeaderProps) {
   const insets = useSafeAreaInsets();
-  const theme = useTheme();
-  const scheme = useColorScheme();
   const title = typeof options.title === "string" ? options.title : "";
   const props = { canGoBack: back !== undefined };
 
@@ -30,7 +24,7 @@ export function AppHeader({ options, back, navigation }: NativeStackHeaderProps)
   const right = options.headerRight?.(props);
 
   return (
-    <View
+    <Box
       // Only the buttons take touches; the content underneath stays scrollable.
       pointerEvents="box-none"
       style={[
@@ -38,25 +32,21 @@ export function AppHeader({ options, back, navigation }: NativeStackHeaderProps)
         { paddingTop: insets.top + 4, height: insets.top + HEADER_BAR },
       ]}
     >
-      <View style={styles.side}>{left}</View>
-      <View style={styles.title} pointerEvents="none">
+      <Box style={styles.side}>{left}</Box>
+      <Box style={styles.title} pointerEvents="none">
         {title ? (
           // Frosted like the buttons, so the title reads on any background.
-          <View style={[styles.titleShadow, Shadows.floating]}>
-            <BlurView
-              intensity={60}
-              tint={scheme === "dark" ? "systemThickMaterialDark" : "systemThickMaterialLight"}
-              style={[styles.titleGlass, { borderColor: theme.separator }]}
-            >
+          <Box style={styles.titleShadow}>
+            <Blur style={styles.titleGlass}>
               <Text variant="headline" numberOfLines={1}>
                 {title}
               </Text>
-            </BlurView>
-          </View>
+            </Blur>
+          </Box>
         ) : null}
-      </View>
-      <View style={[styles.side, styles.right]}>{right}</View>
-    </View>
+      </Box>
+      <Box style={[styles.side, styles.right]}>{right}</Box>
+    </Box>
   );
 }
 

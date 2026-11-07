@@ -1,17 +1,21 @@
 import { eq } from "drizzle-orm";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
-import { KeyboardAvoidingView, Linking, Platform } from "react-native";
+import { useWindowDimensions } from "react-native";
+
+import { SHEET_HEIGHT } from "@/constants/sheet";
 
 import {
   Box,
   Chip,
   HeaderButton,
   Image,
+  KeyboardAvoid,
   ListRow,
   ListSection,
   Screen,
   ScrollView,
+  SheetHeader,
   TabStrip,
   Text,
   TextField,
@@ -21,9 +25,10 @@ import {
 import { db } from "@/db";
 import { createSticker, updateSticker } from "@/db/mutations";
 import { stickers } from "@/db/schema";
-import { useHeaderInset } from "@/hooks/use-header-inset";
+import { useConfirmDiscard } from "@/hooks/use-confirm-discard";
 import { usePacks } from "@/hooks/use-packs";
 import { deleteDraft } from "@/lib/drafts";
+import { Haptic } from "@/lib/haptics";
 import { parseEmojis } from "@/lib/emoji";
 import {
   describeLocation,
@@ -31,12 +36,13 @@ import {
   type StickerLocation,
 } from "@/lib/location";
 import type { PickedImage } from "@/lib/pick-image";
+import { openAppSettings } from "@/lib/platform";
 import { getStickerUri } from "@/lib/sticker-storage";
 import { getPopularTags, getStickerTags, normalizeTag } from "@/lib/tags";
 
 export default function NewSticker() {
   const router = useRouter();
-  const headerInset = useHeaderInset();
+  const { height: windowHeight } = useWindowDimensions();
   const params = useLocalSearchParams<{
     packId?: string;
     stickerId?: string;
@@ -92,6 +98,11 @@ export default function NewSticker() {
   const [tagText, setTagText] = useState("");
   const [popularTags] = useState(() => getPopularTags());
   const [chosenPackId, setChosenPackId] = useState<number>();
+  // Pack ids that existed when "New Pack…" was tapped; a pack that appears after that is the new one.
+  const [packsBeforeNew, setPacksBeforeNew] = useState<number[]>();
+  const createdPackId = packsBeforeNew
+    ? packs.find((pack) => !packsBeforeNew.includes(pack.id))?.id
+    : undefined;
   // Photos suggested from a trip arrive with the place they were taken.
   const initialLocation: StickerLocation | null =
     existing?.latitude != null && existing.longitude != null
@@ -120,10 +131,22 @@ export default function NewSticker() {
   const [locating, setLocating] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Explicit choice, then the pack this screen was opened from, then the first pack.
+  // Explicit choice, then a pack just made from here, then the pack this screen was opened from,
+  // then the first pack.
   const selectedPackId =
     chosenPackId ??
+    createdPackId ??
     (existing?.packId ?? (params.packId ? Number(params.packId) : packs[0]?.id));
+
+  // Anything typed or picked here that leaving would lose. The image itself stays in the editor's draft.
+  const [initialTags] = useState(tagList);
+  const dirty =
+    name !== (existing?.name ?? params.name ?? "Sticker") ||
+    emojiText !== (existing?.emojis.join("") ?? "") ||
+    tagList.join(",") !== initialTags.join(",") ||
+    chosenPackId !== undefined ||
+    locationOn !== (initialLocation !== null);
+  const allowLeave = useConfirmDiscard(dirty && !saving);
 
   const canSave =
     image !== null &&
@@ -161,7 +184,7 @@ export default function NewSticker() {
           "Allow location access in Settings to tag stickers with where they belong.",
           [
             { text: "Cancel", style: "cancel" },
-            { text: "Open Settings", onPress: () => Linking.openSettings() },
+            { text: "Open Settings", onPress: () => openAppSettings() },
           ],
         );
       } else {
@@ -213,9 +236,14 @@ export default function NewSticker() {
         });
       }
       if (params.draftId) deleteDraft(params.draftId);
-      router.back();
+      // Clear the editing steps off the stack, then show the pack the sticker is in.
+      Haptic.success();
+      allowLeave();
+      router.dismissAll();
+      router.push({ pathname: "/(pages)/(packs)/[id]", params: { id: selectedPackId } });
     } catch (error) {
       setSaving(false);
+      Haptic.error();
       showAlert(
         editing ? "Couldn’t Save Sticker" : "Couldn’t Add Sticker",
         error instanceof Error ? error.message : "Something went wrong.",
@@ -232,31 +260,27 @@ export default function NewSticker() {
 
   return (
     <Screen>
-      <Stack.Screen
-        options={{
-          title: editing ? "Edit Sticker" : "New Sticker",
-          headerRight: () => (
-            <HeaderButton
-              label={editing ? "Save" : "Add"}
-              bold
-              disabled={!canSave}
-              onPress={save}
-            />
-          ),
-        }}
+      <SheetHeader
+        title={editing ? "Edit Sticker" : "New Sticker"}
+        left={<HeaderButton label="Cancel" onPress={router.back} />}
+        right={
+          <HeaderButton
+            label={editing ? "Save" : "Add"}
+            bold
+            disabled={!canSave}
+            loading={saving}
+            onPress={save}
+          />
+        }
       />
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          keyboardVerticalOffset={96}
-        >
+        <KeyboardAvoid keyboardVerticalOffset={windowHeight * (1 - SHEET_HEIGHT)}>
           <Box
             flex={1}
             center
             bg="secondarySystemGroupedBackground"
             radius="xl"
             overflow="hidden"
-            style={{ margin: 16, marginTop: headerInset + 4, marginBottom: 12 }}
+            style={{ margin: 16, marginTop: 4, marginBottom: 12 }}
           >
             {image ? (
               <Image
@@ -341,7 +365,12 @@ export default function NewSticker() {
                   <ListRow
                     label="New Pack…"
                     tinted
-                    onPress={() => router.push("/(pages)/(packs)/new-pack")}
+                    onPress={() => {
+                      // The pack made there is picked automatically when this sheet shows again.
+                      setChosenPackId(undefined);
+                      setPacksBeforeNew(packs.map((pack) => pack.id));
+                      router.push("/(pages)/(packs)/pack-page");
+                    }}
                   />
                 </ListSection>
               )}
@@ -375,7 +404,7 @@ export default function NewSticker() {
               )}
             </ScrollView>
           </Box>
-        </KeyboardAvoidingView>
+        </KeyboardAvoid>
     </Screen>
   );
 }

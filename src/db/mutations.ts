@@ -19,13 +19,36 @@ import { deleteStickerImage, saveStickerImage } from "@/lib/sticker-storage";
 // pack's `updatedAt`: the packs list reads sticker counts and covers through
 // subqueries, so this is what makes that live query refresh.
 
+type UpdatePackInput = {
+  id: number;
+  name: string;
+  author?: string;
+  description?: string;
+  /** Stored path of the cover image, or null for none. */
+  coverPath: string | null;
+};
+
+export function updatePack({ id, name, author, description, coverPath }: UpdatePackInput) {
+  db.update(packs)
+    .set({
+      name: name.trim(),
+      author: author?.trim() || null,
+      description: description?.trim() || null,
+      coverPath,
+      updatedAt: new Date(),
+    })
+    .where(eq(packs.id, id))
+    .run();
+}
+
 type NewPackInput = {
   name: string;
   author?: string;
   description?: string;
+  coverPath?: string | null;
 };
 
-export function createPack({ name, author, description }: NewPackInput) {
+export function createPack({ name, author, description, coverPath }: NewPackInput) {
   // New packs go to the end; the order only changes when the user reorders.
   const last = db.select({ position: max(packs.position) }).from(packs).get();
 
@@ -36,6 +59,7 @@ export function createPack({ name, author, description }: NewPackInput) {
       name: name.trim(),
       author: author?.trim() || null,
       description: description?.trim() || null,
+      coverPath: coverPath ?? null,
     })
     .returning()
     .get();
@@ -163,7 +187,13 @@ export async function updateSticker(input: UpdateStickerInput) {
   }
 
   if (input.image) deleteStickerImage(current.path);
-  void syncGeofences();
+  // Reminders only depend on where stickers are and which pack they are in.
+  const moved =
+    current.packId !== input.packId ||
+    current.latitude !== (input.location?.latitude ?? null) ||
+    current.longitude !== (input.location?.longitude ?? null) ||
+    current.radiusMeters !== (input.location?.radiusMeters ?? null);
+  if (moved) void syncGeofences();
 }
 
 /** Saves a new pack order: `ids` lists every pack, first to last. */
@@ -208,6 +238,7 @@ export function deleteSticker(
 
 /** Deletes a pack together with its stickers and their image files. */
 export function deletePack(packId: number) {
+  const cover = db.select({ path: packs.coverPath }).from(packs).where(eq(packs.id, packId)).get();
   const owned = db
     .select({ id: stickers.id, path: stickers.path })
     .from(stickers)
@@ -224,6 +255,7 @@ export function deletePack(packId: number) {
   });
 
   for (const sticker of owned) deleteStickerImage(sticker.path);
+  if (cover?.path) deleteStickerImage(cover.path);
   void syncGeofences();
 }
 

@@ -1,0 +1,27 @@
+import type { ReactNode } from "react";
+
+import { Spacing } from "@/constants/theme";
+
+import { Box } from "./box";
+import { Text } from "./text";
+
+/**
+ * Title bar drawn inside a sheet: a sheet has no navigation bar on Android, so both platforms use this
+ * one. Cancel-style action on the left, the title in the middle, the confirm action on the right.
+ */
+export function SheetHeader({ title, left, right }: { title: string; left?: ReactNode; right?: ReactNode }) {
+  return (
+    // Top padding leaves room between the sheet's grab handle and the title.
+    <Box row align="center" px="md" pb="md" style={{ paddingTop: Spacing.xxl }}>
+      <Box flex={1} align="flex-start">
+        {left}
+      </Box>
+      <Text variant="headline" numberOfLines={1}>
+        {title}
+      </Text>
+      <Box flex={1} align="flex-end">
+        {right}
+      </Box>
+    </Box>
+  );
+}

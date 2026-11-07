@@ -5,6 +5,7 @@ import { useTheme } from "@/hooks/use-theme";
 
 import { Icon } from "./icon";
 import { Pressable, type TouchableProps } from "./pressable";
+import { Spinner } from "./spinner";
 import { Text } from "./text";
 
 type Variant = "filled" | "tinted" | "plain" | "destructive";
@@ -13,6 +14,8 @@ export type ButtonProps = Omit<TouchableProps, "children"> & {
   title?: string;
   icon?: LucideIcon;
   variant?: Variant;
+  /** Shows a spinner in place of the icon and blocks presses until the work is done. */
+  loading?: boolean;
 };
 
 /**
@@ -23,11 +26,13 @@ export function Button({
   title,
   icon,
   variant = "filled",
-  disabled,
+  disabled: disabledProp,
+  loading = false,
   style,
   ...props
 }: ButtonProps) {
   const theme = useTheme();
+  const disabled = disabledProp || loading;
 
   const filled = variant === "filled";
   const tinted = variant === "tinted";
@@ -44,6 +49,7 @@ export function Button({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={title}
+      accessibilityState={{ disabled, busy: loading }}
       disabled={disabled}
       style={[
         {
@@ -67,7 +73,7 @@ export function Button({
       ]}
       {...props}
     >
-      {icon && <Icon icon={icon} size={18} color={textColor} />}
+      {loading ? <Spinner /> : icon && <Icon icon={icon} size={18} color={textColor} />}
       {title && (
         <Text variant="body" weight={filled ? "semibold" : undefined} color={textColor}>
           {title}

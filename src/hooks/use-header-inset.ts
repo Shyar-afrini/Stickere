@@ -8,5 +8,5 @@ export const HEADER_BAR = 48;
  * scrolling content passes underneath it and starts this far down.
  */
 export function useHeaderInset() {
-  return useSafeAreaInsets().top + HEADER_BAR;
+  return useSafeAreaInsets().top;
 }

@@ -1,8 +1,10 @@
-import { Animated } from "react-native";
+import { Animated, Easing } from "react-native";
 
 type Rect = { x: number; y: number; width: number; height: number };
 type Measurable = {
-  measureInWindow(callback: (x: number, y: number, width: number, height: number) => void): void;
+  measureInWindow(
+    callback: (x: number, y: number, width: number, height: number) => void,
+  ): void;
 };
 type Handlers = {
   /** The order changed while dragging. */
@@ -13,17 +15,21 @@ type Handlers = {
   onCommit: (keys: string[]) => void;
 };
 
-// After a swap the cards animate into place; measuring again waits for that.
-const SETTLE_MS = 220;
+// How cards slide to their new slot while another one is dragged.
+const SLIDE = { duration: 180, easing: Easing.out(Easing.cubic) } as const;
 
 /**
  * Drag-to-reorder logic for a set of cards laid out in any flow (grid or
- * columns). Cards register their views; the card being dragged follows the
- * finger and, when its center is over another card, takes that card's place.
+ * columns). Cards register their views. When a drag starts, every card's slot is
+ * measured once. The dragged card follows the finger; when its center is over
+ * another slot the cards slide (transform only, the React order is untouched) to
+ * their new slots. The order is only applied when the finger lifts, so nothing
+ * is re-laid-out or re-measured while dragging, which is what made cards jump.
  * Plain class so gestures can run without touching React refs.
  */
 export class ReorderController {
-  readonly translate = new Animated.ValueXY();
+  // Per-card offset from its layout slot: the finger for the dragged card, a slide for the others.
+  private shifts = new Map<string, Animated.ValueXY>();
   // One shared swing for every card so they jiggle in unison: -1..1, scaled by
   // `amplitude`, which fades in with edit mode and back to 0 (straight) when it ends.
   readonly swing = new Animated.Value(-1);
@@ -35,15 +41,21 @@ export class ReorderController {
   // Window rects of every card at its layout position, without the drag offset.
   private rects = new Map<string, Rect>();
   private keys: string[] = [];
+  // Order while dragging, and the order and slot rectangles the drag started from.
   private order: string[] = [];
-  private handlers: Handlers = { onReorder: () => {}, onActive: () => {}, onCommit: () => {} };
+  private base: string[] = [];
+  private slots: Rect[] = [];
+  private drop: { key: string; from: { x: number; y: number } } | null = null;
+  private handlers: Handlers = {
+    onReorder: () => {},
+    onActive: () => {},
+    onCommit: () => {},
+  };
 
   private armed: string | null = null;
   private active: string | null = null;
   private origin: Rect | null = null;
-  private offset = { x: 0, y: 0 };
   private finger = { dx: 0, dy: 0 };
-  private settling = false;
   private changed = false;
 
   private editing = false;
@@ -63,14 +75,30 @@ export class ReorderController {
       this.swing.setValue(-1);
       this.swingLoop = Animated.loop(
         Animated.sequence([
-          Animated.timing(this.swing, { toValue: 1, duration: 260, useNativeDriver: true }),
-          Animated.timing(this.swing, { toValue: -1, duration: 260, useNativeDriver: true }),
+          Animated.timing(this.swing, {
+            toValue: 1,
+            duration: 260,
+            useNativeDriver: true,
+          }),
+          Animated.timing(this.swing, {
+            toValue: -1,
+            duration: 260,
+            useNativeDriver: true,
+          }),
         ]),
       );
       this.swingLoop.start();
-      Animated.timing(this.amplitude, { toValue: 1, duration: 120, useNativeDriver: true }).start();
+      Animated.timing(this.amplitude, {
+        toValue: 1,
+        duration: 120,
+        useNativeDriver: true,
+      }).start();
     } else {
-      Animated.timing(this.amplitude, { toValue: 0, duration: 160, useNativeDriver: true }).start();
+      Animated.timing(this.amplitude, {
+        toValue: 0,
+        duration: 160,
+        useNativeDriver: true,
+      }).start();
     }
   }
 
@@ -87,17 +115,29 @@ export class ReorderController {
     return this.armed === key;
   }
 
-  /** Long press on a card: remember where every card is, then start following the finger. */
+  /** The animated offset of a card; the card's view applies it as a transform. */
+  shift(key: string) {
+    let value = this.shifts.get(key);
+    if (!value) {
+      value = new Animated.ValueXY();
+      this.shifts.set(key, value);
+    }
+    return value;
+  }
+
+  /** Long press on a card: remember where every slot is, then start following the finger. */
   arm(key: string) {
     this.armed = key;
     this.order = [...this.keys];
+    this.base = [...this.keys];
     this.changed = false;
+    this.drop = null;
     this.finger = { dx: 0, dy: 0 };
     this.measureAll(() => {
       if (this.armed !== key) return;
+      this.slots = this.base.map((k) => this.rects.get(k)!);
       this.origin = this.rects.get(key) ?? null;
       this.active = key;
-      this.setOffset(0, 0);
       this.handlers.onActive(key);
     });
   }
@@ -105,72 +145,95 @@ export class ReorderController {
   move(dx: number, dy: number) {
     if (!this.active || !this.origin) return;
     this.finger = { dx, dy };
-    this.follow();
+    this.shift(this.active).setValue({ x: dx, y: dy });
 
-    if (this.settling) return;
     const center = {
       x: this.origin.x + dx + this.origin.width / 2,
       y: this.origin.y + dy + this.origin.height / 2,
     };
-    const target = [...this.rects].find(
-      ([key, rect]) =>
-        key !== this.active &&
+    const slot = this.slots.findIndex(
+      (rect) =>
+        rect &&
         center.x >= rect.x &&
         center.x <= rect.x + rect.width &&
         center.y >= rect.y &&
         center.y <= rect.y + rect.height,
-    )?.[0];
-    if (!target) return;
+    );
+    const current = this.order.indexOf(this.active);
+    if (slot < 0 || slot === current) return;
 
     const next = [...this.order];
-    next.splice(next.indexOf(this.active), 1);
-    next.splice(this.order.indexOf(target), 0, this.active);
+    next.splice(current, 1);
+    next.splice(slot, 0, this.active);
     this.order = next;
     this.changed = true;
-    this.handlers.onReorder(next);
-
-    this.settling = true;
-    setTimeout(() => {
-      this.measureAll(() => {
-        this.settling = false;
-        this.follow();
-      });
-    }, SETTLE_MS);
+    this.slideOthers();
   }
 
   /** Finger lifted (or the touch was cancelled). Safe to call more than once. */
   end() {
     if (this.armed === null) return;
-    const wasActive = this.active !== null;
+    const active = this.active;
     this.armed = null;
     this.active = null;
+    const origin = this.origin;
     this.origin = null;
-    this.settling = false;
+    this.handlers.onActive(null);
 
-    Animated.spring(this.translate, {
+    if (active && origin && this.changed) {
+      // Apply the order, then `finishDrop` (run once React has laid the cards out in it) clears every
+      // offset and lets the dropped card settle from where the finger left it.
+      this.drop = {
+        key: active,
+        from: { x: origin.x + this.finger.dx, y: origin.y + this.finger.dy },
+      };
+      this.handlers.onReorder(this.order);
+      this.handlers.onCommit(this.order);
+      return;
+    }
+    this.settle(active);
+  }
+
+  /** Called after a render that applied the dropped order. */
+  finishDrop() {
+    const drop = this.drop;
+    if (!drop) return;
+    this.drop = null;
+    const slot = this.slots[this.order.indexOf(drop.key)];
+    for (const [key, value] of this.shifts) {
+      if (key === drop.key) continue;
+      value.setValue({ x: 0, y: 0 });
+    }
+    // The dropped card is now laid out in its new slot; start from where the finger left it.
+    this.shift(drop.key).setValue({
+      x: drop.from.x - slot.x,
+      y: drop.from.y - slot.y,
+    });
+    this.settle(drop.key);
+  }
+
+  private settle(key: string | null) {
+    if (!key) return;
+    Animated.spring(this.shift(key), {
       toValue: { x: 0, y: 0 },
       useNativeDriver: true,
       bounciness: 6,
     }).start();
-    this.offset = { x: 0, y: 0 };
-    this.handlers.onActive(null);
-    if (wasActive && this.changed) this.handlers.onCommit(this.order);
   }
 
-  // Keeps the dragged card under the finger even though its layout slot moved.
-  private follow() {
-    if (!this.active || !this.origin) return;
-    const layout = this.rects.get(this.active);
-    if (!layout) return;
-    this.setOffset(
-      this.origin.x + this.finger.dx - layout.x,
-      this.origin.y + this.finger.dy - layout.y,
-    );
-  }
-
-  private setOffset(x: number, y: number) {
-    this.offset = { x, y };
-    this.translate.setValue({ x, y });
+  // Slides every card except the dragged one to the slot it now has in `order`.
+  private slideOthers() {
+    for (const key of this.base) {
+      if (key === this.active) continue;
+      const from = this.slots[this.base.indexOf(key)];
+      const to = this.slots[this.order.indexOf(key)];
+      if (!from || !to) continue;
+      Animated.timing(this.shift(key), {
+        toValue: { x: to.x - from.x, y: to.y - from.y },
+        useNativeDriver: true,
+        ...SLIDE,
+      }).start();
+    }
   }
 
   private measureAll(done: () => void) {
@@ -180,14 +243,7 @@ export class ReorderController {
 
     for (const [key, view] of entries) {
       view.measureInWindow((x, y, width, height) => {
-        // Window measurements include the drag transform; layout positions don't.
-        const dragged = key === this.active;
-        this.rects.set(key, {
-          x: x - (dragged ? this.offset.x : 0),
-          y: y - (dragged ? this.offset.y : 0),
-          width,
-          height,
-        });
+        this.rects.set(key, { x, y, width, height });
         pending -= 1;
         if (pending === 0) done();
       });

@@ -2,17 +2,17 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 
 import { LockModal } from "@/components/lock-screen";
+import { BIOMETRIC_LABEL } from "@/lib/platform";
 import { ListRow, ListSection, Screen, ScrollView, Toggle } from "@/components/ui";
 import { setPackLocked } from "@/db/mutations";
 import { usePacks } from "@/hooks/use-packs";
+import { Spacing } from "@/constants/theme";
 import { useHeaderInset } from "@/hooks/use-header-inset";
 import { useTabBarInset } from "@/hooks/use-tab-bar-inset";
 import { relockPack, unlockPack, useLockState } from "@/lib/lock-state";
 import { authenticateWithBiometrics, biometricsAvailable, hasPin } from "@/lib/security";
 import { getAppLock, getFaceId, setAppLock, setFaceId } from "@/lib/settings";
-import { Platform } from "react-native";
 
-const BIOMETRIC_LABEL = Platform.OS === "ios" ? "Face ID" : "Biometric Unlock";
 
 export default function Settings() {
   const router = useRouter();
@@ -65,7 +65,7 @@ export default function Settings() {
 
   return (
     <Screen>
-      <ScrollView gap="xl" py="lg" contentContainerStyle={{ paddingTop: headerInset + 16, paddingBottom: tabInset }}>
+      <ScrollView gap="xl" py="lg" contentContainerStyle={{ paddingTop: headerInset + Spacing.sm, paddingBottom: tabInset }}>
         <ListSection
           title="App Lock"
           footer="Locks Stickerê each time you open it or come back to it."

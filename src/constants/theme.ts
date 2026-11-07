@@ -140,18 +140,21 @@ export type RadiusKey = keyof typeof Radius;
  * iOS text styles (Dynamic Type "Large" sizes) with their standard tracking.
  * https://developer.apple.com/design/human-interface-guidelines/typography
  */
+/** SF Pro tracking only suits iOS; Android's Roboto is set without it. */
+const tracking = (value: number) => (Platform.OS === 'ios' ? value : 0);
+
 export const Typography = {
-  largeTitle: { fontSize: 34, lineHeight: 41, letterSpacing: 0.37, fontWeight: '400' },
-  title1: { fontSize: 28, lineHeight: 34, letterSpacing: 0.36, fontWeight: '400' },
-  title2: { fontSize: 22, lineHeight: 28, letterSpacing: 0.35, fontWeight: '400' },
-  title3: { fontSize: 20, lineHeight: 25, letterSpacing: 0.38, fontWeight: '400' },
-  headline: { fontSize: 17, lineHeight: 22, letterSpacing: -0.41, fontWeight: '600' },
-  body: { fontSize: 17, lineHeight: 22, letterSpacing: -0.41, fontWeight: '400' },
-  callout: { fontSize: 16, lineHeight: 21, letterSpacing: -0.32, fontWeight: '400' },
-  subheadline: { fontSize: 15, lineHeight: 20, letterSpacing: -0.24, fontWeight: '400' },
-  footnote: { fontSize: 13, lineHeight: 18, letterSpacing: -0.08, fontWeight: '400' },
-  caption1: { fontSize: 12, lineHeight: 16, letterSpacing: 0, fontWeight: '400' },
-  caption2: { fontSize: 11, lineHeight: 13, letterSpacing: 0.07, fontWeight: '400' },
+  largeTitle: { fontSize: 34, lineHeight: 41, letterSpacing: tracking(0.37), fontWeight: '400' },
+  title1: { fontSize: 28, lineHeight: 34, letterSpacing: tracking(0.36), fontWeight: '400' },
+  title2: { fontSize: 22, lineHeight: 28, letterSpacing: tracking(0.35), fontWeight: '400' },
+  title3: { fontSize: 20, lineHeight: 25, letterSpacing: tracking(0.38), fontWeight: '400' },
+  headline: { fontSize: 17, lineHeight: 22, letterSpacing: tracking(-0.41), fontWeight: '600' },
+  body: { fontSize: 17, lineHeight: 22, letterSpacing: tracking(-0.41), fontWeight: '400' },
+  callout: { fontSize: 16, lineHeight: 21, letterSpacing: tracking(-0.32), fontWeight: '400' },
+  subheadline: { fontSize: 15, lineHeight: 20, letterSpacing: tracking(-0.24), fontWeight: '400' },
+  footnote: { fontSize: 13, lineHeight: 18, letterSpacing: tracking(-0.08), fontWeight: '400' },
+  caption1: { fontSize: 12, lineHeight: 16, letterSpacing: tracking(0), fontWeight: '400' },
+  caption2: { fontSize: 11, lineHeight: 13, letterSpacing: tracking(0.07), fontWeight: '400' },
 } as const;
 
 export type TextVariant = keyof typeof Typography;
